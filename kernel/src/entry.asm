@@ -3,9 +3,10 @@
 _start:
     la  t1, boot_stack
     add     t0, a0, 1
-    slli    t0, t0, 15 # hart_id* stacksize
+    slli    t0, t0, 15 # hart_id * stacksize
     add  sp, t1, t0
-    call main
+    li   a0, 0x123456
+    jal init_kernel
 
     .section .bss.stack
     .globl boot_stack

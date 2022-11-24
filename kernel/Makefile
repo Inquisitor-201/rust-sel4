@@ -1,7 +1,7 @@
 # Building
 TARGET := riscv64gc-unknown-none-elf
 MODE ?= release
-KERNEL_ELF := target/$(TARGET)/$(MODE)/os
+KERNEL_ELF := target/$(TARGET)/$(MODE)/kernel
 KERNEL_BIN := $(KERNEL_ELF).bin
 SDCARD := /dev/sdb
 CPUS ?= 2
@@ -39,7 +39,10 @@ fu740-BURNER	= ../tools/kflash.py
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
-# 反汇编并把文件保存到target/riscv64gc-unknown-none-elf/release/os.S
+kernel:
+	@echo Platform: $(BOARD)
+	@cargo build ${BUILD_MODE}
+
 asm:
 	@$(OBJDUMP) -all $(KERNEL_ELF) > kernel.asm
 
@@ -52,27 +55,18 @@ env:
 $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
-user-apps:
-	@make -C ../user elf
-
-kernel: user-apps
-	@echo Platform: $(BOARD)
-	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build --offline $(BUILD_MODE) --features "board_$(BOARD)"
-	@rm src/linker.ld
-
 clean:
 	@cargo clean
 
-run: build
+run: $(KERNEL_BIN) asm
 	@qemu-system-riscv64 \
 		-machine virt \
 		-m 1G	\
 		-nographic \
 		-bios $(BOOTLOADER) \
 		-device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
-        -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 		-smp $(CPUS)
+        # -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 gdb:
 	@qemu-system-riscv64 \
@@ -80,10 +74,10 @@ gdb:
 		-machine virt -nographic \
 		-bios $(BOOTLOADER) \
 		-device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
-		-drive file=$(FS_IMG),if=none,format=raw,id=x0 \
-		-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 		-smp $(CPUS) \
 		-s -S
+# -drive file=$(FS_IMG),if=none,format=raw,id=x0 \
+# -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 
 monitor:
 	@riscv64-unknown-elf-gdb -ex 'file $(KERNEL_ELF)' \
