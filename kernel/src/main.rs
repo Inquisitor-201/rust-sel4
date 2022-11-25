@@ -3,8 +3,14 @@
 
 mod kernel;
 mod machine;
-mod panic_handler;
 
 use core::arch::global_asm;
 
-global_asm!(include_str!("entry.asm"));
+global_asm!(include_str!("head.S"));
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+pub fn panic_handler(_info: &PanicInfo) -> ! {
+    loop { }
+}
