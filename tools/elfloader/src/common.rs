@@ -35,6 +35,18 @@ macro_rules! is_aligned {
     };
 }
 
+pub struct ImageInfo {
+    pub phys_region_start: u64,
+    pub phys_region_end: u64,
+
+    /* Start/end byte in virtual memory the image requires to be located. */
+    pub virt_region_start: u64,
+    pub virt_region_end: u64,
+
+    /* Virtual address of the user image's entry point. */
+    pub virt_entry: u64,
+}
+
 fn elf_get_memory_bounds(elf: &ElfFile, is_phys: bool) -> (u64, u64) {
     let mut mem_min = u64::max_value();
     let mut mem_max = 0u64;
@@ -74,7 +86,7 @@ fn unpack_elf(elf: &ElfFile) {
     }
 }
 
-fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) {
+fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) -> ImageInfo {
     println!("ELF-loading image {:#x?} to {:#x?}", name, dest_paddr);
     let (min_vaddr, mut max_vaddr) = elf_get_memory_bounds(elf, false);
     max_vaddr = round_up!(max_vaddr, PAGE_BITS);
@@ -90,9 +102,17 @@ fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) {
     println!("  virt_entry={:#x?}", elf_get_entry_point(elf));
 
     unpack_elf(elf);
+
+    ImageInfo {
+        phys_region_start: dest_paddr,
+        phys_region_end: dest_paddr + image_size,
+        virt_region_start: min_vaddr,
+        virt_region_end: max_vaddr,
+        virt_entry: elf_get_entry_point(elf),
+    }
 }
 
-pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) {
+pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) -> ImageInfo {
     extern "C" {
         fn _archive_start();
         fn _archive_end();
@@ -105,12 +125,15 @@ pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) {
         )
     };
 
+    let mut kernel_info = None;
     for entry in iter_files(cpio) {
         if entry.name().eq("kernel") {
             let kernel_elf_blob = entry.file();
             let kernel_elf = ElfFile::new(kernel_elf_blob).unwrap();
             let (kernel_phys_start, kernel_phys_end) = elf_get_memory_bounds(&kernel_elf, true);
-            load_elf("kernel", &kernel_elf, kernel_phys_start);
+            kernel_info = Some(load_elf("kernel", &kernel_elf, kernel_phys_start));
         }
     }
+
+    kernel_info.unwrap()
 }
