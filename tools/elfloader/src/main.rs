@@ -1,20 +1,18 @@
 #![no_std]
 #![no_main]
+#![feature(panic_info_message)]
 mod common;
 mod config;
+mod lang_items;
 mod machine;
 
 use common::load_images;
 use config::*;
 use core::arch::global_asm;
-use core::panic::PanicInfo;
 
 global_asm!(include_str!("crt0.S"));
 
-#[panic_handler]
-pub fn panic_handler(_info: &PanicInfo) -> ! {
-    loop {}
-}
+type InitRiscvKernelFn = fn(u64, u64, u64, u64, u64, u64);
 
 extern "C" {
     pub fn _text();
@@ -23,11 +21,18 @@ extern "C" {
 
 pub fn run_elfloader(_hart_id: u64, bootloader_dtb: *mut u64) -> ! {
     let num_apps = 0usize;
-    let kernel_info = load_images(1, bootloader_dtb);
+    let (kernel_info, user_info) = load_images(1, bootloader_dtb);
     println!("Jumping to kernel-image entry point...\n");
     let kernel_entry =
-        unsafe { core::mem::transmute::<_, fn()>(kernel_info.virt_entry) };
-    kernel_entry();
+        unsafe { core::mem::transmute::<_, InitRiscvKernelFn>(kernel_info.virt_entry) };
+    kernel_entry(
+        user_info.phys_region_start,
+        user_info.phys_region_end,
+        user_info.phys_virt_offset,
+        user_info.virt_entry,
+        0,
+        0
+    );
     panic!("Shouldn't reach here!");
 }
 

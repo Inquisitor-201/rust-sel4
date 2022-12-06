@@ -5,36 +5,34 @@ KERNEL_ELF_BASE = 0x80400000;
 SECTIONS
 {
     . = KERNEL_ELF_BASE;
-    skernel = .;
 
-    stext = .;
+    .boot : {
+        *(.boot.text)
+        *(.boot.rodata)
+        *(.boot.data)
+        . = ALIGN(4K);
+    }
+
+    ki_boot_end = .;
+
     .text : {
-        *(.text.entry)
         . = ALIGN(4K);
-        strampoline = .;
-        *(.text.trampoline);
-        . = ALIGN(4K);
-        *(.text .text.*)
+        *(.text)
     }
 
     . = ALIGN(4K);
-    etext = .;
-    srodata = .;
     .rodata : {
         *(.rodata .rodata.*)
         *(.srodata .srodata.*)
     }
 
     . = ALIGN(4K);
-    erodata = .;
-    sdata = .;
     .data : {
         *(.data .data.*)
         *(.sdata .sdata.*)
     }
 
     . = ALIGN(4K);
-    edata = .;
     sbss_with_stack = .;
     .bss : {
         *(.bss.stack)
@@ -45,7 +43,6 @@ SECTIONS
 
     . = ALIGN(4K);
     ebss = .;
-    ekernel = .;
 
     /DISCARD/ : {
         *(.eh_frame)

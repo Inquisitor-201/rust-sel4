@@ -45,6 +45,7 @@ pub struct ImageInfo {
 
     /* Virtual address of the user image's entry point. */
     pub virt_entry: u64,
+    pub phys_virt_offset: u64,
 }
 
 fn elf_get_memory_bounds(elf: &ElfFile, is_phys: bool) -> (u64, u64) {
@@ -69,10 +70,10 @@ fn elf_get_entry_point(elf: &ElfFile) -> u64 {
     elf.header.pt2.entry_point()
 }
 
-fn unpack_elf(elf: &ElfFile) {
+fn unpack_elf(elf: &ElfFile, elf_min_vaddr: u64, dest_paddr: u64) {
     for header in elf.program_iter() {
         if header.get_type().unwrap() == xmas_elf::program::Type::Load {
-            let seg_dest_paddr = header.physical_addr();
+            let seg_dest_paddr = header.virtual_addr() - elf_min_vaddr + dest_paddr;
             let seg_size = header.file_size();
             let seg_offset = header.offset();
             unsafe {
@@ -101,7 +102,7 @@ fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) -> ImageInfo {
     println!("  vaddr=[{:#x?}..{:#x?}]", min_vaddr, max_vaddr - 1);
     println!("  virt_entry={:#x?}", elf_get_entry_point(elf));
 
-    unpack_elf(elf);
+    unpack_elf(elf, min_vaddr, dest_paddr);
 
     ImageInfo {
         phys_region_start: dest_paddr,
@@ -109,10 +110,11 @@ fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) -> ImageInfo {
         virt_region_start: min_vaddr,
         virt_region_end: max_vaddr,
         virt_entry: elf_get_entry_point(elf),
+        phys_virt_offset: dest_paddr - min_vaddr
     }
 }
 
-pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) -> ImageInfo {
+pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) -> (ImageInfo, ImageInfo) {
     extern "C" {
         fn _archive_start();
         fn _archive_end();
@@ -126,14 +128,27 @@ pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) -> ImageI
     };
 
     let mut kernel_info = None;
+    let mut user_info = None;
+    let mut app_phys_addr = None;
+
     for entry in iter_files(cpio) {
-        if entry.name().eq("kernel") {
-            let kernel_elf_blob = entry.file();
-            let kernel_elf = ElfFile::new(kernel_elf_blob).unwrap();
-            let (kernel_phys_start, kernel_phys_end) = elf_get_memory_bounds(&kernel_elf, true);
-            kernel_info = Some(load_elf("kernel", &kernel_elf, kernel_phys_start));
+        match entry.name() {
+            "kernel" => {
+                let file = entry.file();
+                let kernel_elf = ElfFile::new(file).unwrap();
+                let (kernel_phys_start, kernel_phys_end) = elf_get_memory_bounds(&kernel_elf, true);
+                kernel_info = Some(load_elf("kernel", &kernel_elf, kernel_phys_start));
+                app_phys_addr = Some(round_up!(kernel_phys_end, PAGE_BITS));
+            }
+            "app" => {
+                let app_phys_start = app_phys_addr.unwrap();
+                let file = entry.file();
+                let app_elf = ElfFile::new(file).unwrap();
+                user_info = Some(load_elf("app", &app_elf, app_phys_start));
+            }
+            _ => panic!("Unknown cpio entry {:#x?}", entry.name()),
         }
     }
 
-    kernel_info.unwrap()
+    (kernel_info.unwrap(), user_info.unwrap())
 }

@@ -39,12 +39,15 @@ fu740-BURNER	= ../tools/kflash.py
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
+build: $(KERNEL_BIN) asm
+
 kernel:
 	@echo Platform: $(BOARD)
 	@cargo build ${BUILD_MODE}
 
 asm:
 	@$(OBJDUMP) -all $(KERNEL_ELF) > kernel.asm
+	@riscv64-linux-gnu-readelf -a $(KERNEL_ELF) > kernel-elf.dump
 
 env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)

@@ -3,6 +3,7 @@
 
 mod kernel;
 mod machine;
+mod common;
 
 use core::arch::global_asm;
 

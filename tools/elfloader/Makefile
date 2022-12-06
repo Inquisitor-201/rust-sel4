@@ -5,6 +5,9 @@ IMAGE_ELF := target/$(TARGET)/$(MODE)/elfloader
 IMAGE_BIN := $(IMAGE_ELF).bin
 KERNEL_DIR := ../../kernel
 KERNEL_ELF := ${KERNEL_DIR}/target/$(TARGET)/$(MODE)/kernel
+APP_DIR = ../../apps
+ROOTSERVER_ELF := ${APP_DIR}/target/$(TARGET)/$(MODE)/rootserver
+
 ARCHIVE_BIN := archive.archive.o.cpio
 SDCARD := /dev/sdb
 CPUS ?= 1
@@ -36,15 +39,24 @@ fu740-BURNER	= ../tools/kflash.py
 OBJDUMP := riscv64-linux-gnu-objdump
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
-image: ${ARCHIVE_BIN}
+image: archive
 	@echo Platform: $(BOARD)
 	@cargo build ${BUILD_MODE}
 
-${ARCHIVE_BIN}: ${KERNEL_ELF}
-	@mkdir -p target && cp ${KERNEL_ELF} target/ && cd target && bash -c "echo kernel" | cpio --create > ${ARCHIVE_BIN} && rm kernel
+archive: kernel app
+	@cargo clean && \
+	mkdir -p target && \
+	rm -f target/${ARCHIVE_BIN} && \
+	cp ${KERNEL_ELF} target/kernel && cp ${ROOTSERVER_ELF} target/app && \
+	cd target && \
+	bash -c "echo -e 'kernel\napp\n'" | cpio --create > ${ARCHIVE_BIN} && \
+	rm kernel app
 
-${KERNEL_ELF}:
+kernel:
 	@make -C ${KERNEL_DIR}
+
+app:
+	@make -C ${APP_DIR}
 
 readelf:
 	@riscv64-linux-gnu-readelf -a $(IMAGE_ELF) > image-readelf.txt
