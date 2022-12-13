@@ -1,4 +1,4 @@
-    .section .boot.text, "ax"
+    .section .boot.entry, "ax"
     .globl _start
 _start:
     # la  t1, boot_stack

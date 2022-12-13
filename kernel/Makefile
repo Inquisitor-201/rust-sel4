@@ -39,11 +39,11 @@ fu740-BURNER	= ../tools/kflash.py
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
-build: $(KERNEL_BIN) asm
+build: kernel asm
 
 kernel:
 	@echo Platform: $(BOARD)
-	@cargo build ${BUILD_MODE}
+	@cargo build $(BUILD_MODE) && $(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $(KERNEL_BIN)
 
 asm:
 	@$(OBJDUMP) -all $(KERNEL_ELF) > kernel.asm
@@ -55,8 +55,8 @@ env:
 	rustup component add rust-src
 	rustup component add llvm-tools-preview
 
-$(KERNEL_BIN): kernel
-	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
+clean:
+	@cargo clean
 
 # clean:
 # 	@cargo clean

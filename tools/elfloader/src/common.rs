@@ -22,9 +22,17 @@ macro_rules! round_down {
 }
 
 #[macro_export]
+macro_rules! bit {
+    ($b: expr) => {
+        1 << $b
+    };
+}
+
+
+#[macro_export]
 macro_rules! mask {
     ($b: expr) => {
-        (1 << $b) - 1
+        bit!($b) - 1
     };
 }
 

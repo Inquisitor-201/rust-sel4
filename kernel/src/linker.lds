@@ -7,6 +7,7 @@ SECTIONS
     . = KERNEL_ELF_BASE;
 
     .boot : {
+        *(.boot.entry)
         *(.boot.text)
         *(.boot.rodata)
         *(.boot.data)
@@ -47,4 +48,6 @@ SECTIONS
     /DISCARD/ : {
         *(.eh_frame)
     }
+
+    ki_end = .;
 }

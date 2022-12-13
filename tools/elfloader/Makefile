@@ -39,6 +39,8 @@ fu740-BURNER	= ../tools/kflash.py
 OBJDUMP := riscv64-linux-gnu-objdump
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
+all: $(IMAGE_BIN)
+
 image: archive
 	@echo Platform: $(BOARD)
 	@cargo build ${BUILD_MODE}
@@ -99,6 +101,7 @@ gdb:
 
 monitor:
 	riscv64-unknown-elf-gdb -ex 'file $(IMAGE_ELF)' \
+		-ex 'add-symbol-file $(KERNEL_ELF)' \
 		-ex 'set arch riscv:rv64' \
 		-ex 'target remote localhost:1234'
 
