@@ -1,5 +1,5 @@
 mod boot;
-mod vspace;
 mod heap;
+mod vspace;
 
 pub use vspace::*;

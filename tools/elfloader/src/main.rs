@@ -31,7 +31,7 @@ pub fn run_elfloader(_hart_id: u64, bootloader_dtb: *mut u64) -> ! {
         user_info.phys_virt_offset,
         user_info.virt_entry,
         0,
-        0
+        0,
     );
     panic!("Shouldn't reach here!");
 }

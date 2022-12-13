@@ -28,7 +28,6 @@ macro_rules! bit {
     };
 }
 
-
 #[macro_export]
 macro_rules! mask {
     ($b: expr) => {
@@ -118,7 +117,7 @@ fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) -> ImageInfo {
         virt_region_start: min_vaddr,
         virt_region_end: max_vaddr,
         virt_entry: elf_get_entry_point(elf),
-        phys_virt_offset: dest_paddr - min_vaddr
+        phys_virt_offset: dest_paddr - min_vaddr,
     }
 }
 

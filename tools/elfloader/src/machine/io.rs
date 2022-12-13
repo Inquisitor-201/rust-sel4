@@ -1,5 +1,5 @@
-use core::fmt::{Write, self};
 use super::console_putchar;
+use core::fmt::{self, Write};
 
 struct Stdout;
 
@@ -15,7 +15,6 @@ impl Write for Stdout {
 pub fn console_print(args: fmt::Arguments) {
     Stdout.write_fmt(args).unwrap();
 }
-
 
 #[macro_export]
 macro_rules! print {

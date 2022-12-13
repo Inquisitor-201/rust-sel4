@@ -3,9 +3,9 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
+mod drivers;
 mod kernel;
 mod machine;
-mod drivers;
 
 #[macro_use]
 mod common;
@@ -14,8 +14,8 @@ mod common;
 extern crate bitflags;
 extern crate alloc;
 
-use core::arch::global_asm;
 use buddy_system_allocator::LockedHeap;
+use core::arch::global_asm;
 
 global_asm!(include_str!("head.S"));
 

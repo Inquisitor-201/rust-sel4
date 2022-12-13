@@ -17,4 +17,3 @@ fn panic(info: &PanicInfo) -> ! {
     }
     loop {}
 }
-
