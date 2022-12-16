@@ -1,10 +1,11 @@
 use core::arch::asm;
 
 use crate::{
-    common::{KERNEL_ELF_BASE, PAGE_BITS, PAGE_PTES, PTE_FLAG_BITS},
+    bit,
+    common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PTE_FLAG_BITS},
     get_level_pgbits, get_level_pgsize,
-    machine::{Paddr, Vaddr},
-    println, round_down,
+    machine::{Paddr, Vaddr, Vregion},
+    println, round_down, round_up,
 };
 use riscv::register::satp;
 use spin::{Lazy, Mutex};
@@ -28,11 +29,11 @@ pub struct PTE(pub u64);
 
 impl PTE {
     pub fn from_pa(pa: Paddr, flags: PTEFlags) -> Self {
-        Self((pa.0 >> PAGE_BITS) << PTE_FLAG_BITS | flags.bits() as u64)
+        Self((pa.0 >> seL4_PageBits) << PTE_FLAG_BITS | flags.bits() as u64)
     }
 
     pub fn pa(&self) -> Paddr {
-        Paddr((self.0 >> PTE_FLAG_BITS) << PAGE_BITS)
+        Paddr((self.0 >> PTE_FLAG_BITS) << seL4_PageBits)
     }
 }
 
@@ -71,7 +72,7 @@ impl KernelPagetable {
 
     pub fn satp(&self) -> u64 {
         let root_pa = self.root.as_ptr() as u64;
-        8 << 60 | (root_pa >> PAGE_BITS)
+        8 << 60 | (root_pa >> seL4_PageBits)
     }
 
     fn activate(&self) {
@@ -88,4 +89,20 @@ pub fn activate_kernel_vspace() {
 
 pub fn map_kernel_window() {
     KERNEL_PT.lock().map_kernel_window();
+}
+
+#[link_section = ".boot.text"]
+fn get_n_paging(v_reg: Vregion, bits: usize) -> usize {
+    let start = round_down!(v_reg.start.0, bits);
+    let end = round_up!(v_reg.end.0, bits);
+    (end - start) as usize / bit!(bits)
+}
+
+#[link_section = ".boot.text"]
+pub fn arch_get_n_paging(it_v_reg: Vregion) -> usize {
+    let mut n = 0;
+    for i in 0..3usize {
+        n += get_n_paging(it_v_reg, get_level_pgbits!(i));
+    }
+    n
 }

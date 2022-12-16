@@ -6,7 +6,7 @@ pub use io::*;
 pub use sbi::*;
 
 use crate::{
-    common::{PAGE_BITS, PAGE_SIZE},
+    common::{seL4_PageBits, PAGE_SIZE},
     is_aligned,
     kernel::PTE,
     mask,
@@ -36,12 +36,12 @@ impl From<Paddr> for u64 {
 
 impl Paddr {
     pub fn get_page_bytes(&self) -> &'static [u8] {
-        assert!(is_aligned!(self.0, PAGE_BITS));
+        assert!(is_aligned!(self.0, seL4_PageBits));
         unsafe { core::slice::from_raw_parts(self.0 as *const u8, PAGE_SIZE) }
     }
 
     pub fn get_page_pte_array(&self) -> &'static [PTE] {
-        assert!(is_aligned!(self.0, PAGE_BITS));
+        assert!(is_aligned!(self.0, seL4_PageBits));
         unsafe {
             core::slice::from_raw_parts(
                 self.0 as *const PTE,
@@ -61,7 +61,7 @@ impl From<u64> for Vaddr {
 
 impl Vaddr {
     pub fn pt_level_index(&self, level: usize) -> usize {
-        ((self.0 >> (PAGE_BITS + (2 - level) * 9)) & mask!(9)) as usize
+        ((self.0 >> (seL4_PageBits + (2 - level) * 9)) & mask!(9)) as usize
     }
 }
 
@@ -92,6 +92,9 @@ impl Pregion {
             start: Paddr(vreg.start.0),
             end: Paddr(vreg.end.0),
         }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.start.0 == self.end.0
     }
 }
 
@@ -136,7 +139,7 @@ impl Debug for Pregion {
 #[macro_export]
 macro_rules! get_level_pgbits {
     ($lvl: expr) => {
-        9 * (2 - $lvl) + $crate::common::PAGE_BITS
+        9 * (2 - $lvl) + $crate::common::seL4_PageBits
     };
 }
 
