@@ -1,8 +1,3 @@
-use crate::{
-    kernel::PTE,
-    machine::{Paddr, Vaddr, Pregion},
-};
-
 #[macro_export]
 macro_rules! round_up {
     ($n: expr, $b: expr) => {
@@ -57,5 +52,7 @@ pub const seL4_ASIDPoolBits: usize = 12;
 pub const seL4_VSpaceBits: usize = 12;
 pub const seL4_PageTableBits: usize = 12;
 pub const BI_FRAME_SIZE_BITS: usize = seL4_PageBits;
+
+pub const WORD_BITS: usize = 64;
 
 pub const PAGE_SIZE: usize = bit!(seL4_PageBits);

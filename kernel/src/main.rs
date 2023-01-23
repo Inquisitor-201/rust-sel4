@@ -14,7 +14,6 @@ mod common;
 extern crate bitflags;
 extern crate alloc;
 
-use buddy_system_allocator::LockedHeap;
 use core::arch::global_asm;
 
 global_asm!(include_str!("head.S"));
