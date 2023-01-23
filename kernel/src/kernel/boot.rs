@@ -14,7 +14,11 @@ use crate::{
 };
 
 use super::{
-    activate_kernel_vspace, arch_get_n_paging, heap::init_heap, structures::{Capability, seL4_CapInitThreadCNode, CapSlot, seL4_CapDomain, seL4_CapIRQControl}
+    activate_kernel_vspace, arch_get_n_paging,
+    heap::init_heap,
+    structures::{
+        seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode, CapSlot, Capability,
+    },
 };
 
 #[link_section = ".boot.text"]
@@ -294,9 +298,9 @@ impl RootServer {
     #[link_section = ".boot.text"]
     fn create_root_cnode(&self) -> Capability {
         let cap = Capability::cap_cnode_cap_new(
-            CONFIG_ROOT_CNODE_SIZE_BITS,            /* radix */
+            CONFIG_ROOT_CNODE_SIZE_BITS,             /* radix */
             WORD_BITS - CONFIG_ROOT_CNODE_SIZE_BITS, /* guard size */
-            0,                                      /* guard */
+            0,                                       /* guard */
             self.cnode.0 as _,
         ); /* pptr */
 
@@ -307,19 +311,16 @@ impl RootServer {
 }
 
 #[link_section = ".boot.text"]
-fn create_domain_cap(root_cnode_cap: Capability)
-{
+fn create_domain_cap(root_cnode_cap: Capability) {
     let cap = Capability::cap_domain_cap_new();
     root_cnode_cap.cnode_write_slot_at(seL4_CapDomain, cap);
 }
 
 #[link_section = ".boot.text"]
-fn init_irqs(root_cnode_cap: Capability)
-{
+fn init_irqs(root_cnode_cap: Capability) {
     let cap = Capability::cap_irq_control_cap_new();
     root_cnode_cap.cnode_write_slot_at(seL4_CapIRQControl, cap);
 }
-
 
 #[link_section = ".boot.text"]
 fn try_init_kernel(
@@ -369,7 +370,6 @@ fn try_init_kernel(
     init_irqs(root_cnode_cap);
 
     root_cnode_cap.debug_print_cnode();
-
 }
 
 #[link_section = ".boot.text"]

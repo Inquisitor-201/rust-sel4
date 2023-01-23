@@ -41,7 +41,7 @@ pub enum CapInfo {
     NullCap,
     CnodeCap { ptr: Paddr },
     IrqControlCap,
-    DomainCap
+    DomainCap,
 }
 
 #[repr(C)]
@@ -68,7 +68,7 @@ impl Capability {
             },
             CAP_IRQ_CONTROL_CAP => CapInfo::IrqControlCap,
             CAP_DOMAIN_CAP => CapInfo::DomainCap,
-            _ => unimplemented!("unknown capability type {}", self.get_type_raw())
+            _ => unimplemented!("unknown capability type {}", self.get_type_raw()),
         }
     }
 
@@ -196,5 +196,5 @@ impl CapSlot {
 
 #[repr(C)]
 pub struct CNode {
-    pub slots: [CapSlot; 1 << CONFIG_ROOT_CNODE_SIZE_BITS]
+    pub slots: [CapSlot; 1 << CONFIG_ROOT_CNODE_SIZE_BITS],
 }

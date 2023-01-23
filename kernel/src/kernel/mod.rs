@@ -1,6 +1,6 @@
 mod boot;
 mod heap;
-mod vspace;
 mod structures;
+mod vspace;
 
 pub use vspace::*;
