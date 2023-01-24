@@ -3,14 +3,12 @@ use core::arch::asm;
 use crate::{
     bit,
     common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PTE_FLAG_BITS},
-    get_level_pgbits, get_level_pgsize,
-    machine::{Paddr, Vaddr, Vregion},
-    println, round_down, round_up,
+    get_level_pgbits, 
+    machine::{Paddr, Vaddr, Vregion}, round_down, round_up,
 };
 use riscv::register::satp;
 use spin::{Lazy, Mutex};
 
-use super::structures::Capability;
 
 pub const IT_ASID: usize = 1;
 
@@ -29,11 +27,11 @@ bitflags! {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PTE(pub u64);
+pub struct PTE(pub usize);
 
 impl PTE {
     pub fn from_pa(pa: Paddr, flags: PTEFlags) -> Self {
-        Self((pa.0 >> seL4_PageBits) << PTE_FLAG_BITS | flags.bits() as u64)
+        Self((pa.0 >> seL4_PageBits) << PTE_FLAG_BITS | flags.bits() as usize)
     }
 
     pub fn pa(&self) -> Paddr {
@@ -74,9 +72,9 @@ impl KernelPagetable {
         );
     }
 
-    pub fn satp(&self) -> u64 {
-        let root_pa = self.root.as_ptr() as u64;
-        8 << 60 | (root_pa >> seL4_PageBits)
+    pub fn satp(&self) -> usize {
+        let root_pa = self.root.as_ptr() ;
+        8 << 60 | (root_pa as usize >> seL4_PageBits)
     }
 
     fn activate(&self) {

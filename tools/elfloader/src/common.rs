@@ -43,21 +43,21 @@ macro_rules! is_aligned {
 }
 
 pub struct ImageInfo {
-    pub phys_region_start: u64,
-    pub phys_region_end: u64,
+    pub phys_region_start: usize,
+    pub phys_region_end: usize,
 
     /* Start/end byte in virtual memory the image requires to be located. */
-    pub virt_region_start: u64,
-    pub virt_region_end: u64,
+    pub virt_region_start: usize,
+    pub virt_region_end: usize,
 
     /* Virtual address of the user image's entry point. */
-    pub virt_entry: u64,
-    pub phys_virt_offset: u64,
+    pub virt_entry: usize,
+    pub phys_virt_offset: usize,
 }
 
-fn elf_get_memory_bounds(elf: &ElfFile, is_phys: bool) -> (u64, u64) {
-    let mut mem_min = u64::max_value();
-    let mut mem_max = 0u64;
+fn elf_get_memory_bounds(elf: &ElfFile, is_phys: bool) -> (usize, usize) {
+    let mut mem_min = usize::max_value();
+    let mut mem_max = 0usize;
     for header in elf.program_iter() {
         if header.get_type().unwrap() == xmas_elf::program::Type::Load {
             let sect_min = if is_phys {
@@ -66,21 +66,21 @@ fn elf_get_memory_bounds(elf: &ElfFile, is_phys: bool) -> (u64, u64) {
                 header.virtual_addr()
             };
             let sect_max = sect_min + header.mem_size();
-            mem_min = mem_min.min(sect_min);
-            mem_max = mem_max.max(sect_max);
+            mem_min = mem_min.min(sect_min as _);
+            mem_max = mem_max.max(sect_max as _);
         }
     }
     (mem_min, mem_max)
 }
 
-fn elf_get_entry_point(elf: &ElfFile) -> u64 {
-    elf.header.pt2.entry_point()
+fn elf_get_entry_point(elf: &ElfFile) -> usize {
+    elf.header.pt2.entry_point() as _
 }
 
-fn unpack_elf(elf: &ElfFile, elf_min_vaddr: u64, dest_paddr: u64) {
+fn unpack_elf(elf: &ElfFile, elf_min_vaddr: usize, dest_paddr: usize) {
     for header in elf.program_iter() {
         if header.get_type().unwrap() == xmas_elf::program::Type::Load {
-            let seg_dest_paddr = header.virtual_addr() - elf_min_vaddr + dest_paddr;
+            let seg_dest_paddr = header.virtual_addr() as usize - elf_min_vaddr + dest_paddr;
             let seg_size = header.file_size();
             let seg_offset = header.offset();
             unsafe {
@@ -94,7 +94,7 @@ fn unpack_elf(elf: &ElfFile, elf_min_vaddr: u64, dest_paddr: u64) {
     }
 }
 
-fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) -> ImageInfo {
+fn load_elf(name: &str, elf: &ElfFile, dest_paddr: usize) -> ImageInfo {
     println!("ELF-loading image {:#x?} to {:#x?}", name, dest_paddr);
     let (min_vaddr, mut max_vaddr) = elf_get_memory_bounds(elf, false);
     max_vaddr = round_up!(max_vaddr, PAGE_BITS);
@@ -121,7 +121,7 @@ fn load_elf(name: &str, elf: &ElfFile, dest_paddr: u64) -> ImageInfo {
     }
 }
 
-pub fn load_images(max_user_images: usize, bootloader_dtb: *const u64) -> (ImageInfo, ImageInfo) {
+pub fn load_images(max_user_images: usize, bootloader_dtb: *const usize) -> (ImageInfo, ImageInfo) {
     extern "C" {
         fn _archive_start();
         fn _archive_end();

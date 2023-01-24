@@ -65,12 +65,12 @@ impl Capability {
         match self.get_type_raw() {
             CAP_NULL_CAP => CapInfo::NullCap,
             CAP_CNODE_CAP => CapInfo::CnodeCap {
-                ptr: Paddr((self.words[0].get_bits(0..=34) << 1) as u64),
+                ptr: Paddr((self.words[0].get_bits(0..=34) << 1) ),
             },
             CAP_IRQ_CONTROL_CAP => CapInfo::IrqControlCap,
             CAP_DOMAIN_CAP => CapInfo::DomainCap,
             CAP_PAGE_TABLE_CAP => CapInfo::PageTableCap {
-                base: Paddr((self.words[0].get_bits(0..39)) as u64)
+                base: Paddr((self.words[0].get_bits(0..39)) )
             },
             _ => unimplemented!("unknown capability type {}", self.get_type_raw()),
         }

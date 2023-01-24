@@ -135,7 +135,7 @@ pub struct RootServer {
 fn alloc_rootserver_obj(rootserver_mem: &mut Pregion, size_bits: usize, n: usize) -> Paddr {
     assert!(is_aligned!(rootserver_mem.start.0, size_bits));
     let allocated = rootserver_mem.start;
-    rootserver_mem.start.0 += n as u64 * bit!(size_bits);
+    rootserver_mem.start.0 += n  * bit!(size_bits);
     unsafe {
         core::slice::from_raw_parts_mut(allocated.0 as *mut u8, n * bit!(size_bits)).fill(0);
     }
@@ -145,14 +145,14 @@ fn alloc_rootserver_obj(rootserver_mem: &mut Pregion, size_bits: usize, n: usize
 /// 创建若干个rootserver对象，这些对象按从大到小的顺序分配
 #[link_section = ".boot.text"]
 fn create_rootserver_objects(
-    start: u64,
+    start: usize,
     it_v_reg: Vregion,
     extra_bi_size_bits: usize,
     max: usize,
     size: usize,
 ) -> RootServer {
-    let end = start + size as u64;
-    let mut rootserver_mem = Pregion::new(Paddr(start), Paddr(start + size as u64));
+    let end = start + size ;
+    let mut rootserver_mem = Pregion::new(Paddr(start), Paddr(start + size ));
     alloc_extra_bi(extra_bi_size_bits);
 
     // /* the root cnode is at least 4k, so it could be larger or smaller than a pd. */
@@ -168,7 +168,7 @@ fn create_rootserver_objects(
     // /* paging structures are 4k on every arch except aarch32 (1k) */
     let n = arch_get_n_paging(it_v_reg);
     let paging_start = alloc_rootserver_obj(&mut rootserver_mem, seL4_PageTableBits, n);
-    let paging_end = Paddr(paging_start.0 + n as u64 * bit!(seL4_PageTableBits));
+    let paging_end = Paddr(paging_start.0 + n  * bit!(seL4_PageTableBits));
 
     assert!(seL4_TCBBits <= seL4_PageTableBits);
 
@@ -224,7 +224,7 @@ fn init_freemem(
         /* Invariant: all non-empty regions are ordered, disjoint and unallocated. */
 
         /* Try to take the top-most suitably sized and aligned chunk. */
-        let unaligned_start = freemem[i].end.0 - size as u64;
+        let unaligned_start = freemem[i].end.0 - size ;
         let start = round_down!(unaligned_start, max);
 
         /* if unaligned_start didn't underflow, and start fits in the region,
@@ -232,7 +232,7 @@ fn init_freemem(
         if unaligned_start <= freemem[i].end.0 && start >= freemem[i].start.0 {
             let rootserver =
                 create_rootserver_objects(start, it_v_reg, extra_bi_size_bits, max, size);
-            freemem.push(Pregion::new(Paddr(start + size as u64), freemem[i].end));
+            freemem.push(Pregion::new(Paddr(start + size ), freemem[i].end));
             /* Leave the before leftover in current slot i. */
             freemem[i].end = Paddr(start);
             println!("final freemem = {:#x?}", freemem);
@@ -259,7 +259,7 @@ fn arch_init_freemem(
     extern "C" {
         fn ki_end();
     }
-    let kernel_reg = Pregion::new(Paddr(KERNEL_ELF_BASE), Paddr(ki_end as u64));
+    let kernel_reg = Pregion::new(Paddr(KERNEL_ELF_BASE), Paddr(ki_end as _));
     res_reg.push(kernel_reg);
     res_reg.push(ui_reg);
 
@@ -371,12 +371,12 @@ fn try_init_kernel(
     pv_offset: Paddr,
     v_entry: Vaddr,
     dtb_addr_p: Paddr,
-    dtb_size: u64,
+    dtb_size: usize,
 ) {
     extern "C" {
         fn ki_boot_end();
     }
-    let boot_mem_reuse_reg = Pregion::new(Paddr(KERNEL_ELF_BASE), Paddr(ki_boot_end as u64));
+    let boot_mem_reuse_reg = Pregion::new(Paddr(KERNEL_ELF_BASE), Paddr(ki_boot_end as _));
     let ui_reg = Pregion::new(ui_p_reg_start, ui_p_reg_end);
     let ui_v_reg = Vregion::new(
         Vaddr(ui_p_reg_start.0 - pv_offset.0),
@@ -384,7 +384,7 @@ fn try_init_kernel(
     );
 
     let ipcbuf_vptr = ui_v_reg.end;
-    let bi_frame_vptr = Vaddr(ipcbuf_vptr.0 + PAGE_SIZE as u64);
+    let bi_frame_vptr = Vaddr(ipcbuf_vptr.0 + PAGE_SIZE );
     let extra_bi_frame_vptr = Vaddr(bi_frame_vptr.0 + bit!(BI_FRAME_SIZE_BITS));
 
     map_kernel_window();
@@ -422,7 +422,7 @@ pub fn init_kernel(
     pv_offset: Paddr,
     v_entry: Vaddr,
     dtb_addr_p: Paddr,
-    dtb_size: u64,
+    dtb_size: usize,
 ) -> ! {
     clear_bss();
     init_heap();

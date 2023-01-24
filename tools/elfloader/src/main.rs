@@ -12,14 +12,14 @@ use core::arch::global_asm;
 
 global_asm!(include_str!("crt0.S"));
 
-type InitRiscvKernelFn = fn(u64, u64, u64, u64, u64, u64);
+type InitRiscvKernelFn = fn(usize, usize, usize, usize, usize, usize);
 
 extern "C" {
     pub fn _text();
     pub fn _end();
 }
 
-pub fn run_elfloader(_hart_id: u64, bootloader_dtb: *mut u64) -> ! {
+pub fn run_elfloader(_hart_id: usize, bootloader_dtb: *mut usize) -> ! {
     let num_apps = 0usize;
     let (kernel_info, user_info) = load_images(1, bootloader_dtb);
     println!("Jumping to kernel-image entry point...\n");
@@ -37,7 +37,7 @@ pub fn run_elfloader(_hart_id: u64, bootloader_dtb: *mut u64) -> ! {
 }
 
 #[no_mangle]
-pub fn main(hart_id: u64, bootloader_dtb: *mut u64) -> ! {
+pub fn main(hart_id: usize, bootloader_dtb: *mut usize) -> ! {
     println!(
         "ELF-loader started on (HART {}) (NODES {})",
         hart_id, CONFIG_MAX_NUM_NODES

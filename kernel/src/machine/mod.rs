@@ -14,21 +14,21 @@ use crate::{
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct Paddr(pub u64);
+pub struct Paddr(pub usize);
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct Vaddr(pub u64);
+pub struct Vaddr(pub usize);
 
 // paddr
 
-impl From<u64> for Paddr {
-    fn from(x: u64) -> Self {
+impl From<usize> for Paddr {
+    fn from(x: usize) -> Self {
         Self(x)
     }
 }
 
-impl From<Paddr> for u64 {
+impl From<Paddr> for usize {
     fn from(x: Paddr) -> Self {
         x.0
     }
@@ -53,8 +53,8 @@ impl Paddr {
 
 // vaddr
 
-impl From<u64> for Vaddr {
-    fn from(x: u64) -> Self {
+impl From<usize> for Vaddr {
+    fn from(x: usize) -> Self {
         Self(x)
     }
 }
@@ -65,7 +65,7 @@ impl Vaddr {
     }
 }
 
-impl From<Vaddr> for u64 {
+impl From<Vaddr> for usize {
     fn from(x: Vaddr) -> Self {
         x.0
     }
@@ -86,12 +86,6 @@ pub struct Vregion {
 impl Pregion {
     pub fn new(start: Paddr, end: Paddr) -> Self {
         Self { start, end }
-    }
-    pub fn from_identical_vreg(vreg: Vregion) -> Self {
-        Self {
-            start: Paddr(vreg.start.0),
-            end: Paddr(vreg.end.0),
-        }
     }
     pub fn is_empty(&self) -> bool {
         self.start.0 == self.end.0

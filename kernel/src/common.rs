@@ -35,14 +35,14 @@ macro_rules! is_aligned {
 
 pub const KERNEL_HEAP_SIZE: usize = 0x4000;
 
-pub const KERNEL_ELF_BASE: u64 = 0x84000000;
+pub const KERNEL_ELF_BASE: usize = 0x84000000;
 pub const PAGE_PTES: usize = PAGE_SIZE / 8;
 pub const PTE_FLAG_BITS: usize = 10;
 
-pub const USER_TOP: u64 = 0x0000003ffffff000;
+pub const USER_TOP: usize = 0x0000003ffffff000;
 
-pub const AVAIL_REGION_START: u64 = 0x80200000;
-pub const AVAIL_REGION_END: u64 = 0x90000000;
+pub const AVAIL_REGION_START: usize = 0x80200000;
+pub const AVAIL_REGION_END: usize = 0x90000000;
 
 pub const CONFIG_ROOT_CNODE_SIZE_BITS: usize = 13;
 pub const seL4_PageBits: usize = 12;
