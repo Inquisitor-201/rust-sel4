@@ -121,7 +121,7 @@ fn load_elf(name: &str, elf: &ElfFile, dest_paddr: usize) -> ImageInfo {
     }
 }
 
-pub fn load_images(max_user_images: usize, bootloader_dtb: *const usize) -> (ImageInfo, ImageInfo) {
+pub fn load_images(_max_user_images: usize, _bootloader_dtb: *const usize) -> (ImageInfo, ImageInfo) {
     extern "C" {
         fn _archive_start();
         fn _archive_end();

@@ -20,7 +20,7 @@ extern "C" {
 }
 
 pub fn run_elfloader(_hart_id: usize, bootloader_dtb: *mut usize) -> ! {
-    let num_apps = 0usize;
+    let _num_apps = 0usize;
     let (kernel_info, user_info) = load_images(1, bootloader_dtb);
     println!("Jumping to kernel-image entry point...\n");
     let kernel_entry =
