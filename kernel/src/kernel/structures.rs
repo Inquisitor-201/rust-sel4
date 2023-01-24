@@ -6,7 +6,7 @@ use crate::{common::CONFIG_ROOT_CNODE_SIZE_BITS, machine::Paddr, println};
 pub const CAP_NULL_CAP: usize = 0;
 pub const cap_frame_cap: usize = 1;
 pub const cap_untyped_cap: usize = 2;
-pub const cap_page_table_cap: usize = 3;
+pub const CAP_PAGE_TABLE_CAP: usize = 3;
 pub const cap_endpoint_cap: usize = 4;
 pub const cap_notification_cap: usize = 6;
 pub const cap_reply_cap: usize = 8;
@@ -40,6 +40,7 @@ pub const seL4_NumInitialCaps: usize = 14;
 pub enum CapInfo {
     NullCap,
     CnodeCap { ptr: Paddr },
+    PageTableCap { base: Paddr },
     IrqControlCap,
     DomainCap,
 }
@@ -68,6 +69,9 @@ impl Capability {
             },
             CAP_IRQ_CONTROL_CAP => CapInfo::IrqControlCap,
             CAP_DOMAIN_CAP => CapInfo::DomainCap,
+            CAP_PAGE_TABLE_CAP => CapInfo::PageTableCap {
+                base: Paddr((self.words[0].get_bits(0..39)) as u64)
+            },
             _ => unimplemented!("unknown capability type {}", self.get_type_raw()),
         }
     }
@@ -145,6 +149,25 @@ impl Capability {
         let mut cap = Self::new_empty();
         cap.words[0] = CAP_IRQ_CONTROL_CAP << 59;
         cap.words[1] = 0;
+        cap
+    }
+
+    /// 创建新的指向根页表的cap
+    /// 参数: capPTMappedASID：进程标识号asid,
+    ///       capPTBasePtr：页表基址
+    ///       capPTIsMapped：pt是否mapped，即cap是否有效
+    ///       capPTMappedAddress：虚拟地址
+    pub fn cap_page_table_cap_new(
+        capPTMappedASID: usize,
+        capPTBasePtr: usize,
+        capPTIsMapped: bool,
+        capPTMappedAddress: usize,
+    ) -> Capability {
+        let mut cap = Self::new_empty();
+
+        cap.words[0] = CAP_PAGE_TABLE_CAP << 59 | (capPTIsMapped as usize) << 39 | capPTMappedAddress;
+        cap.words[1] = capPTMappedASID << 48 | capPTBasePtr << 9;
+
         cap
     }
 }

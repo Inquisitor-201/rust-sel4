@@ -17,8 +17,8 @@ use super::{
     activate_kernel_vspace, arch_get_n_paging,
     heap::init_heap,
     structures::{
-        seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode, CapSlot, Capability,
-    },
+        seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode, CapSlot, Capability, seL4_CapInitThreadVSpace,
+    }, IT_ASID,
 };
 
 #[link_section = ".boot.text"]
@@ -308,6 +308,48 @@ impl RootServer {
         cap.cnode_write_slot_at(seL4_CapInitThreadCNode, cap);
         cap
     }
+
+    
+#[link_section = ".boot.text"]
+/* Create an address space for the initial thread.
+ * This includes page directory and page tables */
+pub fn create_it_address_space(&self, root_cnode_cap: Capability, it_v_reg: Vregion, slot_pos_cur: usize) -> (Capability, usize) {
+    //  cap_t      lvl1pt_cap;
+    //  vptr_t     pt_vptr;
+
+    //  copyGlobalMappings(PTE_PTR(rootserver.vspace));
+
+    let root_pt_cap = Capability::cap_page_table_cap_new(
+             IT_ASID,                  /* capPTMappedASID    */
+             self.vspace.0 as _,          /* capPTBasePtr       */
+             true,                       /* capPTIsMapped      */
+             self.vspace.0 as _     /* capPTMappedAddress */
+         );
+    root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadVSpace, root_pt_cap);
+
+    //  /* create all n level PT caps necessary to cover userland image in 4KiB pages */
+    //  for (int i = 0; i < CONFIG_PT_LEVELS - 1; i++) {
+
+    //      for (pt_vptr = ROUND_DOWN(it_v_reg.start, RISCV_GET_LVL_PGSIZE_BITS(i));
+    //           pt_vptr < it_v_reg.end;
+    //           pt_vptr += RISCV_GET_LVL_PGSIZE(i)) {
+    //          if (!provide_cap(root_cnode_cap,
+    //                           create_it_pt_cap(lvl1pt_cap, it_alloc_paging(), pt_vptr, IT_ASID))
+    //             ) {
+    //              return cap_null_cap_new();
+    //          }
+    //      }
+
+    //  }
+
+    //  seL4_SlotPos slot_pos_after = ndks_boot.slot_pos_cur;
+    //  ndks_boot.bi_frame->userImagePaging = (seL4_SlotRegion) {
+    //      slot_pos_before, slot_pos_after
+    //  };
+
+    (root_pt_cap, 0)
+}
+
 }
 
 #[link_section = ".boot.text"]
@@ -365,10 +407,10 @@ fn try_init_kernel(
     /* create the root cnode */
     let root_cnode_cap = rootserver.create_root_cnode();
 
-    /* create the cap for managing thread domains */
     create_domain_cap(root_cnode_cap);
     init_irqs(root_cnode_cap);
-
+    rootserver.create_it_address_space(root_cnode_cap, it_v_reg, 0);
+    
     root_cnode_cap.debug_print_cnode();
 }
 

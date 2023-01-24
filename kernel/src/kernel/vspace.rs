@@ -10,6 +10,10 @@ use crate::{
 use riscv::register::satp;
 use spin::{Lazy, Mutex};
 
+use super::structures::Capability;
+
+pub const IT_ASID: usize = 1;
+
 bitflags! {
     pub struct PTEFlags: u8 {
         const V = 1 << 0;
