@@ -7,18 +7,20 @@ use crate::{
     bit,
     common::*,
     drivers::plic_init_hart,
-    is_aligned,
+    get_level_pgbits, get_level_pgsize, is_aligned,
     kernel::map_kernel_window,
-    machine::{Paddr, Pregion, Vaddr, Vregion},
+    machine::{clear_memory, Paddr, Pregion, Vaddr, Vregion},
     println, round_down,
 };
 
 use super::{
-    activate_kernel_vspace, arch_get_n_paging,
+    activate_kernel_vspace, arch_get_n_paging, create_it_pt_cap, create_mapped_it_frame_cap,
     heap::init_heap,
     structures::{
-        seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode, CapSlot, Capability, seL4_CapInitThreadVSpace,
-    }, IT_ASID,
+        seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode,
+        seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
+    },
+    IT_ASID,
 };
 
 #[link_section = ".boot.text"]
@@ -27,11 +29,9 @@ fn clear_bss() {
         fn sbss();
         fn ebss();
     }
-    unsafe {
-        core::slice::from_raw_parts_mut(sbss as usize as *mut u8, ebss as usize - sbss as usize)
-            .fill(0);
-    }
+    clear_memory(Paddr(sbss as usize), ebss as usize - sbss as usize);
 }
+
 #[link_section = ".boot.text"]
 fn check_available_memory(avail_reg: Pregion) -> bool {
     println!("available phys memory regions: {}", 1);
@@ -135,7 +135,7 @@ pub struct RootServer {
 fn alloc_rootserver_obj(rootserver_mem: &mut Pregion, size_bits: usize, n: usize) -> Paddr {
     assert!(is_aligned!(rootserver_mem.start.0, size_bits));
     let allocated = rootserver_mem.start;
-    rootserver_mem.start.0 += n  * bit!(size_bits);
+    rootserver_mem.start.0 += n * bit!(size_bits);
     unsafe {
         core::slice::from_raw_parts_mut(allocated.0 as *mut u8, n * bit!(size_bits)).fill(0);
     }
@@ -151,8 +151,8 @@ fn create_rootserver_objects(
     max: usize,
     size: usize,
 ) -> RootServer {
-    let end = start + size ;
-    let mut rootserver_mem = Pregion::new(Paddr(start), Paddr(start + size ));
+    let end = start + size;
+    let mut rootserver_mem = Pregion::new(Paddr(start), Paddr(start + size));
     alloc_extra_bi(extra_bi_size_bits);
 
     // /* the root cnode is at least 4k, so it could be larger or smaller than a pd. */
@@ -168,7 +168,7 @@ fn create_rootserver_objects(
     // /* paging structures are 4k on every arch except aarch32 (1k) */
     let n = arch_get_n_paging(it_v_reg);
     let paging_start = alloc_rootserver_obj(&mut rootserver_mem, seL4_PageTableBits, n);
-    let paging_end = Paddr(paging_start.0 + n  * bit!(seL4_PageTableBits));
+    let paging_end = Paddr(paging_start.0 + n * bit!(seL4_PageTableBits));
 
     assert!(seL4_TCBBits <= seL4_PageTableBits);
 
@@ -224,7 +224,7 @@ fn init_freemem(
         /* Invariant: all non-empty regions are ordered, disjoint and unallocated. */
 
         /* Try to take the top-most suitably sized and aligned chunk. */
-        let unaligned_start = freemem[i].end.0 - size ;
+        let unaligned_start = freemem[i].end.0 - size;
         let start = round_down!(unaligned_start, max);
 
         /* if unaligned_start didn't underflow, and start fits in the region,
@@ -232,7 +232,7 @@ fn init_freemem(
         if unaligned_start <= freemem[i].end.0 && start >= freemem[i].start.0 {
             let rootserver =
                 create_rootserver_objects(start, it_v_reg, extra_bi_size_bits, max, size);
-            freemem.push(Pregion::new(Paddr(start + size ), freemem[i].end));
+            freemem.push(Pregion::new(Paddr(start + size), freemem[i].end));
             /* Leave the before leftover in current slot i. */
             freemem[i].end = Paddr(start);
             println!("final freemem = {:#x?}", freemem);
@@ -309,47 +309,108 @@ impl RootServer {
         cap
     }
 
-    
-#[link_section = ".boot.text"]
-/* Create an address space for the initial thread.
- * This includes page directory and page tables */
-pub fn create_it_address_space(&self, root_cnode_cap: Capability, it_v_reg: Vregion, slot_pos_cur: usize) -> (Capability, usize) {
-    //  cap_t      lvl1pt_cap;
-    //  vptr_t     pt_vptr;
+    #[link_section = ".boot.text"]
+    /// 从rootserver的paging区域分配一个内存页
+    fn it_alloc_paging(&mut self) -> Paddr {
+        let allocated = self.paging.start;
+        self.paging.start.0 += bit!(seL4_PageTableBits);
+        assert!(self.paging.start.0 <= self.paging.end.0);
+        return allocated;
+    }
 
-    //  copyGlobalMappings(PTE_PTR(rootserver.vspace));
+    #[link_section = ".boot.text"]
+    /* Create an address space for the initial thread.
+     * This includes page directory and page tables */
+    pub fn create_it_address_space(
+        &mut self,
+        root_cnode_cap: Capability,
+        it_v_reg: Vregion,
+        slot_pos_cur: &mut usize,
+    ) -> Capability {
+        //  cap_t      lvl1pt_cap;
+        //  vptr_t     pt_vptr;
 
-    let root_pt_cap = Capability::cap_page_table_cap_new(
-             IT_ASID,                  /* capPTMappedASID    */
-             self.vspace.0 as _,          /* capPTBasePtr       */
-             true,                       /* capPTIsMapped      */
-             self.vspace.0 as _     /* capPTMappedAddress */
-         );
-    root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadVSpace, root_pt_cap);
+        //  copyGlobalMappings(PTE_PTR(rootserver.vspace));
 
-    //  /* create all n level PT caps necessary to cover userland image in 4KiB pages */
-    //  for (int i = 0; i < CONFIG_PT_LEVELS - 1; i++) {
+        let root_pt_cap = Capability::cap_page_table_cap_new(
+            IT_ASID,            /* capPTMappedASID    */
+            self.vspace.0 as _, /* capPTBasePtr       */
+            true,               /* capPTIsMapped      */
+            self.vspace.0 as _, /* capPTMappedAddress */
+        );
+        root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadVSpace, root_pt_cap);
 
-    //      for (pt_vptr = ROUND_DOWN(it_v_reg.start, RISCV_GET_LVL_PGSIZE_BITS(i));
-    //           pt_vptr < it_v_reg.end;
-    //           pt_vptr += RISCV_GET_LVL_PGSIZE(i)) {
-    //          if (!provide_cap(root_cnode_cap,
-    //                           create_it_pt_cap(lvl1pt_cap, it_alloc_paging(), pt_vptr, IT_ASID))
-    //             ) {
-    //              return cap_null_cap_new();
-    //          }
-    //      }
+        //  /* create all n level PT caps necessary to cover userland image in 4KiB pages */
+        for i in 0..2usize {
+            let mut pt_vptr = round_down!(it_v_reg.start.0, get_level_pgbits!(i));
+            while pt_vptr < it_v_reg.end.0 {
+                println!("i = {}, pt_vptr = {:#x?}", i, pt_vptr);
+                provide_cap(
+                    root_cnode_cap,
+                    create_it_pt_cap(root_pt_cap, self.it_alloc_paging().0, pt_vptr, IT_ASID),
+                    slot_pos_cur,
+                );
+                pt_vptr += get_level_pgsize!(i);
+            }
+        }
 
-    //  }
+        //  seL4_SlotPos slot_pos_after = ndks_boot.slot_pos_cur;
+        //  ndks_boot.bi_frame->userImagePaging = (seL4_SlotRegion) {
+        //      slot_pos_before, slot_pos_after
+        //  };
 
-    //  seL4_SlotPos slot_pos_after = ndks_boot.slot_pos_cur;
-    //  ndks_boot.bi_frame->userImagePaging = (seL4_SlotRegion) {
-    //      slot_pos_before, slot_pos_after
-    //  };
+        root_pt_cap
+    }
 
-    (root_pt_cap, 0)
+    #[link_section = ".boot.text"]
+    pub fn populate_bi_frame(
+        &self,
+        node_id: usize,
+        num_nodes: usize,
+        ipcbuf_vptr: Vaddr,
+        extra_bi_size: usize,
+    ) {
+        /* clear boot info memory */
+        clear_memory(self.boot_info, bit!(BI_FRAME_SIZE_BITS));
+        if extra_bi_size != 0 {
+            clear_memory(self.extra_bi, extra_bi_size);
+        }
+
+        /* initialise bootinfo-related global state */
+        // seL4_BootInfo *bi = BI_PTR(rootserver.boot_info);
+        // bi->nodeID = node_id;
+        // bi->numNodes = num_nodes;
+        // bi->numIOPTLevels = 0;
+        // bi->ipcBuffer = (seL4_IPCBuffer *)ipcbuf_vptr;
+        // bi->initThreadCNodeSizeBits = CONFIG_ROOT_CNODE_SIZE_BITS;
+        // bi->initThreadDomain = ksDomSchedule[ksDomScheduleIdx].domain;
+        // bi->extraLen = extra_bi_size;
+    }
+
+    #[link_section = ".boot.text"]
+    fn create_bi_frame_cap(&self, root_cnode_cap: Capability, pd_cap: Capability, vptr: Vaddr) {
+        /* create a cap of it and write it into the root CNode */
+        let cap = create_mapped_it_frame_cap(pd_cap, self.boot_info, vptr, IT_ASID, false);
+        root_cnode_cap.cnode_write_slot_at(seL4_CapBootInfoFrame, cap);
+    }
+
+    // #[link_section = ".boot.text"]
+    // fn create_ipcbuf_frame_cap(root_cnode_cap, it_pd_cap, ipcbuf_vptr) {
+
+    // }
 }
 
+#[link_section = ".boot.text"]
+/// 向root_cnode_cap指向的cnode的空闲cap区域中填写一个cap
+fn provide_cap(root_cnode_cap: Capability, cap: Capability, slot_pos_cur: &mut usize) {
+    if *slot_pos_cur >= bit!(CONFIG_ROOT_CNODE_SIZE_BITS) {
+        panic!(
+            "ERROR: can't add another cap, all {} slots used\n",
+            bit!(CONFIG_ROOT_CNODE_SIZE_BITS)
+        );
+    }
+    root_cnode_cap.cnode_write_slot_at(*slot_pos_cur, cap);
+    *slot_pos_cur += 1;
 }
 
 #[link_section = ".boot.text"]
@@ -384,7 +445,7 @@ fn try_init_kernel(
     );
 
     let ipcbuf_vptr = ui_v_reg.end;
-    let bi_frame_vptr = Vaddr(ipcbuf_vptr.0 + PAGE_SIZE );
+    let bi_frame_vptr = Vaddr(ipcbuf_vptr.0 + PAGE_SIZE);
     let extra_bi_frame_vptr = Vaddr(bi_frame_vptr.0 + bit!(BI_FRAME_SIZE_BITS));
 
     map_kernel_window();
@@ -401,7 +462,7 @@ fn try_init_kernel(
         );
     }
 
-    let (res_reg, freemem, rootserver) = arch_init_freemem(ui_reg, it_v_reg);
+    let (res_reg, freemem, mut rootserver) = arch_init_freemem(ui_reg, it_v_reg);
     println!("rootserver = {:#x?}", rootserver);
 
     /* create the root cnode */
@@ -409,8 +470,17 @@ fn try_init_kernel(
 
     create_domain_cap(root_cnode_cap);
     init_irqs(root_cnode_cap);
-    rootserver.create_it_address_space(root_cnode_cap, it_v_reg, 0);
-    
+
+    /* create the bootinfo frame */
+    rootserver.populate_bi_frame(0, 1, ipcbuf_vptr, 0);
+
+    let mut slot_pos_cur = seL4_NumInitialCaps;
+    let root_pt_cap =
+        rootserver.create_it_address_space(root_cnode_cap, it_v_reg, &mut slot_pos_cur);
+
+    /* Create and map bootinfo frame cap */
+    rootserver.create_bi_frame_cap(root_cnode_cap, root_pt_cap, bi_frame_vptr);
+
     root_cnode_cap.debug_print_cnode();
 }
 

@@ -1,10 +1,14 @@
 use riscv::addr::BitField;
 
-use crate::{common::CONFIG_ROOT_CNODE_SIZE_BITS, machine::Paddr, println};
+use crate::{
+    common::CONFIG_ROOT_CNODE_SIZE_BITS,
+    machine::{Paddr, Vaddr},
+    println,
+};
 
 // capability types
 pub const CAP_NULL_CAP: usize = 0;
-pub const cap_frame_cap: usize = 1;
+pub const CAP_FRAME_CAP: usize = 1;
 pub const cap_untyped_cap: usize = 2;
 pub const CAP_PAGE_TABLE_CAP: usize = 3;
 pub const cap_endpoint_cap: usize = 4;
@@ -39,8 +43,9 @@ pub const seL4_NumInitialCaps: usize = 14;
 #[derive(Debug)]
 pub enum CapInfo {
     NullCap,
+    FrameCap { vptr: Vaddr, pptr: Paddr },
     CnodeCap { ptr: Paddr },
-    PageTableCap { base: Paddr },
+    PageTableCap { vptr: Vaddr, pptr: Paddr },
     IrqControlCap,
     DomainCap,
 }
@@ -57,31 +62,37 @@ impl Capability {
     }
 
     fn get_type_raw(&self) -> usize {
-        let ret = self.words[0].get_bits(59..=63);
+        let ret = self.words[0].get_bits(59..64);
         ret
     }
 
     pub fn get_info(&self) -> CapInfo {
         match self.get_type_raw() {
             CAP_NULL_CAP => CapInfo::NullCap,
+            CAP_FRAME_CAP => CapInfo::FrameCap {
+                vptr: Vaddr(self.words[0].get_bits(0..39)),
+                pptr: Paddr(self.words[1].get_bits(9..48)),
+            },
             CAP_CNODE_CAP => CapInfo::CnodeCap {
-                ptr: Paddr((self.words[0].get_bits(0..=34) << 1) ),
+                ptr: Paddr(self.words[0].get_bits(0..35) << 1),
             },
             CAP_IRQ_CONTROL_CAP => CapInfo::IrqControlCap,
             CAP_DOMAIN_CAP => CapInfo::DomainCap,
             CAP_PAGE_TABLE_CAP => CapInfo::PageTableCap {
-                base: Paddr((self.words[0].get_bits(0..39)) )
+                vptr: Vaddr(self.words[0].get_bits(0..39)),
+                pptr: Paddr(self.words[1].get_bits(9..48)),
             },
             _ => unimplemented!("unknown capability type {}", self.get_type_raw()),
         }
     }
 
-    // pub fn get_ptr(&self) -> Paddr {
-    //     match self.get_info() {
-    //         CapInfo::CnodeCap { ptr } => ptr,
-    //         _ => panic!("This cnode has no valid ptr"),
-    //     }
-    // }
+    pub fn get_pptr(&self) -> Paddr {
+        match self.get_info() {
+            CapInfo::CnodeCap { ptr } => ptr,
+            CapInfo::PageTableCap { pptr, .. } => pptr,
+            _ => panic!("This cnode has no ptr field"),
+        }
+    }
 
     /// 调试：打印该cap对应的cnode的全部内容
     pub fn debug_print_cnode(&self) {
@@ -152,11 +163,11 @@ impl Capability {
         cap
     }
 
-    /// 创建新的指向根页表的cap
+    /// 创建新的指向页表页面的cap
     /// 参数: capPTMappedASID：进程标识号asid,
-    ///       capPTBasePtr：页表基址
-    ///       capPTIsMapped：pt是否mapped，即cap是否有效
-    ///       capPTMappedAddress：虚拟地址
+    ///       capPTBasePtr：页表页面的物理地址,
+    ///       capPTIsMapped：pt是否mapped，即cap是否有效,
+    ///       capPTMappedAddress：映射的虚拟地址
     pub fn cap_page_table_cap_new(
         capPTMappedASID: usize,
         capPTBasePtr: usize,
@@ -165,10 +176,38 @@ impl Capability {
     ) -> Capability {
         let mut cap = Self::new_empty();
 
-        cap.words[0] = CAP_PAGE_TABLE_CAP << 59 | (capPTIsMapped as usize) << 39 | capPTMappedAddress;
+        cap.words[0] =
+            CAP_PAGE_TABLE_CAP << 59 | (capPTIsMapped as usize) << 39 | capPTMappedAddress;
         cap.words[1] = capPTMappedASID << 48 | capPTBasePtr << 9;
 
         cap
+    }
+
+    /// 创建新的指向页面frame的cap
+    /// 参数: capFMappedASID：进程标识号asid,
+    ///       capPTBasePtr：映射的物理地址,
+    ///       capFSize：页面大小,
+    ///       capFVMRights：访问权限,
+    ///       capFIsDevice：是否为设备,
+    ///       capPTMappedAddress：映射的虚拟地址
+    pub fn cap_frame_cap_new(
+        capFMappedASID: usize,
+        capFBasePtr: usize,
+        capFSize: usize,
+        capFVMRights: usize,
+        capFIsDevice: bool,
+        capFMappedAddress: usize,
+    ) -> Capability {
+        let mut cap = Self::new_empty();
+
+        cap.words[0] = CAP_FRAME_CAP << 59
+            | capFSize << 57
+            | capFVMRights << 55
+            | (capFIsDevice as usize) << 54
+            | capFMappedAddress;
+        cap.words[1] = capFMappedASID << 48 | capFBasePtr << 9;
+
+        return cap;
     }
 }
 

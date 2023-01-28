@@ -133,7 +133,7 @@ impl Debug for Pregion {
 #[macro_export]
 macro_rules! get_level_pgbits {
     ($lvl: expr) => {
-        9 * (2 - $lvl) + $crate::common::seL4_PageBits
+        $crate::common::PT_INDEX_BITS * (2 - $lvl) + $crate::common::seL4_PageBits
     };
 }
 
@@ -142,4 +142,10 @@ macro_rules! get_level_pgsize {
     ($lvl: expr) => {
         $crate::bit!($crate::get_level_pgbits!($lvl))
     };
+}
+
+pub fn clear_memory(pa: Paddr, len: usize) {
+    unsafe {
+        core::slice::from_raw_parts_mut(pa.0 as *mut u8, len).fill(0);
+    }
 }
