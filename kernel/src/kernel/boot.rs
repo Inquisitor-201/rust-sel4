@@ -15,10 +15,11 @@ use crate::{
 
 use super::{
     activate_kernel_vspace, arch_get_n_paging, create_it_pt_cap, create_mapped_it_frame_cap,
+    create_unmapped_it_frame_cap,
     heap::init_heap,
     structures::{
         seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode,
-        seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
+        seL4_CapInitThreadIPCBuffer, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
     },
     IT_ASID,
 };
@@ -394,10 +395,53 @@ impl RootServer {
         root_cnode_cap.cnode_write_slot_at(seL4_CapBootInfoFrame, cap);
     }
 
-    // #[link_section = ".boot.text"]
-    // fn create_ipcbuf_frame_cap(root_cnode_cap, it_pd_cap, ipcbuf_vptr) {
+    #[link_section = ".boot.text"]
+    fn create_ipcbuf_frame_cap(&self, root_cnode_cap: Capability, pd_cap: Capability, vptr: Vaddr) {
+        clear_memory(self.ipc_buf, PAGE_SIZE);
 
-    // }
+        /* create a cap of it and write it into the root CNode */
+        let cap = create_mapped_it_frame_cap(pd_cap, self.ipc_buf, vptr, IT_ASID, false);
+        root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadIPCBuffer, cap);
+    }
+
+    #[link_section = ".boot.text"]
+    fn create_frames_of_region(
+        &self,
+        root_cnode_cap: Capability,
+        pd_cap: Capability,
+        reg: Pregion,
+        do_map: bool,
+        pv_offset: usize,
+        slot_pos_cur: &mut usize,
+    ) {
+        // pptr_t     f;
+        // cap_t      frame_cap;
+        // seL4_SlotPos slot_pos_before;
+        // seL4_SlotPos slot_pos_after;
+
+        // slot_pos_before = ndks_boot.slot_pos_cur;
+
+        let mut pa = reg.start;
+        while pa.0 < reg.end.0 {
+            let frame_cap = if do_map {
+                create_mapped_it_frame_cap(pd_cap, pa, pa.to_pa(pv_offset), IT_ASID, true)
+            } else {
+                create_unmapped_it_frame_cap(pa)
+            };
+            provide_cap(root_cnode_cap, frame_cap, slot_pos_cur);
+            pa.0 += PAGE_SIZE;
+        }
+
+        // slot_pos_after = ndks_boot.slot_pos_cur;
+
+        // return (create_frames_of_region_ret_t) {
+        //     .region = (seL4_SlotRegion) {
+        //         .start = slot_pos_before,
+        //         .end   = slot_pos_after
+        //     },
+        //     .success = true
+        // };
+    }
 }
 
 #[link_section = ".boot.text"]
@@ -429,7 +473,7 @@ fn init_irqs(root_cnode_cap: Capability) {
 fn try_init_kernel(
     ui_p_reg_start: Paddr,
     ui_p_reg_end: Paddr,
-    pv_offset: Paddr,
+    pv_offset: usize,
     v_entry: Vaddr,
     dtb_addr_p: Paddr,
     dtb_size: usize,
@@ -440,8 +484,8 @@ fn try_init_kernel(
     let boot_mem_reuse_reg = Pregion::new(Paddr(KERNEL_ELF_BASE), Paddr(ki_boot_end as _));
     let ui_reg = Pregion::new(ui_p_reg_start, ui_p_reg_end);
     let ui_v_reg = Vregion::new(
-        Vaddr(ui_p_reg_start.0 - pv_offset.0),
-        Vaddr(ui_p_reg_end.0 - pv_offset.0),
+        ui_p_reg_start.to_pa(pv_offset),
+        ui_p_reg_end.to_pa(pv_offset),
     );
 
     let ipcbuf_vptr = ui_v_reg.end;
@@ -480,6 +524,15 @@ fn try_init_kernel(
 
     /* Create and map bootinfo frame cap */
     rootserver.create_bi_frame_cap(root_cnode_cap, root_pt_cap, bi_frame_vptr);
+    rootserver.create_ipcbuf_frame_cap(root_cnode_cap, root_pt_cap, ipcbuf_vptr);
+    rootserver.create_frames_of_region(
+        root_cnode_cap,
+        root_pt_cap,
+        ui_reg,
+        true,
+        pv_offset,
+        &mut slot_pos_cur,
+    );
 
     root_cnode_cap.debug_print_cnode();
 }
@@ -489,7 +542,7 @@ fn try_init_kernel(
 pub fn init_kernel(
     ui_p_reg_start: Paddr,
     ui_p_reg_end: Paddr,
-    pv_offset: Paddr,
+    pv_offset: usize,
     v_entry: Vaddr,
     dtb_addr_p: Paddr,
     dtb_size: usize,

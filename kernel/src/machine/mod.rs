@@ -22,18 +22,6 @@ pub struct Vaddr(pub usize);
 
 // paddr
 
-impl From<usize> for Paddr {
-    fn from(x: usize) -> Self {
-        Self(x)
-    }
-}
-
-impl From<Paddr> for usize {
-    fn from(x: Paddr) -> Self {
-        x.0
-    }
-}
-
 impl Paddr {
     pub fn get_page_bytes(&self) -> &'static [u8] {
         assert!(is_aligned!(self.0, seL4_PageBits));
@@ -49,25 +37,20 @@ impl Paddr {
             )
         }
     }
+
+    pub fn to_pa(&self, pv_offset: usize) -> Vaddr {
+        Vaddr(self.0 - pv_offset)
+    }
 }
 
 // vaddr
 
-impl From<usize> for Vaddr {
-    fn from(x: usize) -> Self {
-        Self(x)
-    }
-}
-
 impl Vaddr {
     pub fn pt_level_index(&self, level: usize) -> usize {
-        ((self.0 >> (seL4_PageBits + (2 - level) * 9)) & mask!(9)) as usize
+        (self.0 >> (seL4_PageBits + (2 - level) * 9)) & mask!(9)
     }
-}
-
-impl From<Vaddr> for usize {
-    fn from(x: Vaddr) -> Self {
-        x.0
+    pub fn to_pa(&self, pv_offset: usize) -> Paddr {
+        Paddr(self.0 + pv_offset)
     }
 }
 

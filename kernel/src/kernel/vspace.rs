@@ -2,7 +2,7 @@ use core::arch::asm;
 
 use crate::{
     bit,
-    common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PTE_FLAG_BITS, PT_INDEX_BITS, PAGE_SIZE},
+    common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS},
     get_level_pgbits,
     machine::{Paddr, Vaddr, Vregion},
     mask, round_down, round_up,
@@ -12,6 +12,7 @@ use spin::{Lazy, Mutex};
 
 use super::structures::{CapInfo, Capability};
 
+pub const ASID_INVALID: usize = 0;
 pub const IT_ASID: usize = 1;
 
 bitflags! {
@@ -224,7 +225,7 @@ pub fn create_it_pt_cap(
 enum VmRights {
     VMKernelOnly = 1,
     VMReadOnly = 2,
-    VMReadWrite = 3
+    VMReadWrite = 3,
 }
 
 #[link_section = ".boot.text"]
@@ -236,14 +237,26 @@ pub fn create_mapped_it_frame_cap(
     executable: bool,
 ) -> Capability {
     let cap = Capability::cap_frame_cap_new(
-        asid,                          /* capFMappedASID       */
-        pptr.0,                          /* capFBasePtr          */
-        PAGE_SIZE,                    /* capFSize             */
-        VmRights::VMReadWrite as _, /* capFVMRights         */
-        false,                             /* capFIsDevice         */
-        vptr.0,                          /* capFMappedAddress    */
+        asid,                       /* capFMappedASID    */
+        pptr.0,                     /* capFBasePtr       */
+        PAGE_SIZE,                  /* capFSize          */
+        VmRights::VMReadWrite as _, /* capFVMRights      */
+        false,                      /* capFIsDevice      */
+        vptr.0,                     /* capFMappedAddress */
     );
 
     map_it_frame_cap(pd_cap, cap);
     cap
+}
+
+#[link_section = ".boot.text"]
+pub fn create_unmapped_it_frame_cap(pptr: Paddr) -> Capability {
+    Capability::cap_frame_cap_new(
+        ASID_INVALID, /* capFMappedASID       */
+        pptr.0,       /* capFBasePtr          */
+        0,            /* capFSize             */
+        0,            /* capFVMRights         */
+        false,
+        0, /* capFMappedAddress    */
+    )
 }
