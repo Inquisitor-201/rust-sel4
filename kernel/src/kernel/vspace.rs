@@ -260,3 +260,14 @@ pub fn create_unmapped_it_frame_cap(pptr: Paddr) -> Capability {
         0, /* capFMappedAddress    */
     )
 }
+
+pub const asidHighBits: usize = 7;
+pub const asidLowBits: usize = 9;
+
+#[link_section = ".boot.text"]
+pub fn write_it_asid_pool(it_ap_cap: Capability, root_pt_cap: Capability)
+{
+    // asid_pool_t *ap = ASID_POOL_PTR(pptr_of_cap(it_ap_cap));
+    // ap->array[IT_ASID] = PTE_PTR(pptr_of_cap(root_pt_cap));
+    // riscvKSASIDTable[IT_ASID >> asidLowBits] = ap;
+}

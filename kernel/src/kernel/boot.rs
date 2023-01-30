@@ -19,9 +19,9 @@ use super::{
     heap::init_heap,
     structures::{
         seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode,
-        seL4_CapInitThreadIPCBuffer, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
+        seL4_CapInitThreadIPCBuffer, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability, seL4_CapInitThreadASIDPool, seL4_CapASIDControl,
     },
-    IT_ASID,
+    IT_ASID, asidLowBits,
 };
 
 #[link_section = ".boot.text"]
@@ -442,6 +442,16 @@ impl RootServer {
         //     .success = true
         // };
     }
+
+    #[link_section = ".boot.text"]
+    pub fn create_it_asid_pool(&self, root_cnode_cap: Capability) -> Capability {
+        let ap_cap = Capability::cap_asid_pool_cap_new(IT_ASID >> asidLowBits, self.asid_pool.0);
+        root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadASIDPool, ap_cap);
+
+        /* create ASID control cap */
+        root_cnode_cap.cnode_write_slot_at(seL4_CapASIDControl, Capability::cap_asid_control_cap_new());
+        ap_cap
+    }
 }
 
 #[link_section = ".boot.text"]
@@ -533,7 +543,8 @@ fn try_init_kernel(
         pv_offset,
         &mut slot_pos_cur,
     );
-
+    let it_ap_cap = rootserver.create_it_asid_pool(root_cnode_cap);
+    write_it_asid_pool(it_ap_cap, root_pt_cap);
     root_cnode_cap.debug_print_cnode();
 }
 

@@ -17,7 +17,7 @@ pub const cap_reply_cap: usize = 8;
 pub const CAP_CNODE_CAP: usize = 10;
 pub const cap_asid_control_cap: usize = 11;
 pub const cap_thread_cap: usize = 12;
-pub const cap_asid_pool_cap: usize = 13;
+pub const CAP_ASID_POOL_CAP: usize = 13;
 pub const CAP_IRQ_CONTROL_CAP: usize = 14;
 pub const cap_irq_handler_cap: usize = 16;
 pub const cap_zombie_cap: usize = 18;
@@ -207,7 +207,19 @@ impl Capability {
             | capFMappedAddress;
         cap.words[1] = capFMappedASID << 48 | capFBasePtr << 9;
 
-        return cap;
+        cap
+    }
+
+    pub fn cap_asid_pool_cap_new(capASIDBase: usize, capASIDPool: usize) -> Capability {
+        let mut cap = Self::new_empty();
+        cap.words[0] = CAP_ASID_POOL_CAP << 59 | capASIDBase << 43 | capASIDPool >> 2;
+        cap
+    }
+
+    pub fn cap_asid_control_cap_new() -> Capability {
+        let mut cap = Self::new_empty();
+        cap.words[0] = cap_asid_control_cap << 59;
+        cap
     }
 }
 
