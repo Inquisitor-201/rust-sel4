@@ -25,21 +25,37 @@ pub struct Vaddr(pub usize);
 impl Paddr {
     pub fn get_page_bytes(&self) -> &'static [u8] {
         assert!(is_aligned!(self.0, seL4_PageBits));
-        unsafe { core::slice::from_raw_parts(self.0 as *const u8, PAGE_SIZE) }
+        unsafe { core::slice::from_raw_parts(self.as_raw_ptr::<u8>(), PAGE_SIZE) }
     }
 
     pub fn get_page_pte_array(&self) -> &'static [PTE] {
         assert!(is_aligned!(self.0, seL4_PageBits));
         unsafe {
             core::slice::from_raw_parts(
-                self.0 as *const PTE,
+                self.as_raw_ptr::<PTE>(),
                 PAGE_SIZE / core::mem::size_of::<PTE>(),
             )
         }
     }
 
-    pub fn to_pa(&self, pv_offset: usize) -> Vaddr {
+    pub fn to_va(&self, pv_offset: usize) -> Vaddr {
         Vaddr(self.0 - pv_offset)
+    }
+
+    pub fn as_raw_ptr<T>(&self) -> *const T {
+        self.0 as *const T
+    }
+
+    pub fn as_raw_ptr_mut<T>(&self) -> *mut T {
+        self.0 as *mut T
+    }
+
+    pub unsafe fn as_ref<T>(&self) -> &'static T {
+        (self.0 as *const T).as_ref().unwrap()
+    }
+
+    pub unsafe fn as_mut<T>(&self) -> &'static mut T {
+        (self.0 as *mut T).as_mut().unwrap()
     }
 }
 
@@ -129,6 +145,6 @@ macro_rules! get_level_pgsize {
 
 pub fn clear_memory(pa: Paddr, len: usize) {
     unsafe {
-        core::slice::from_raw_parts_mut(pa.0 as *mut u8, len).fill(0);
+        core::slice::from_raw_parts_mut(pa.as_raw_ptr_mut::<u8>(), len).fill(0);
     }
 }

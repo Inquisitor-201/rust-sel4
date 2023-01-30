@@ -57,3 +57,6 @@ pub const WORD_BITS: usize = 64;
 
 pub const PAGE_SIZE: usize = bit!(seL4_PageBits);
 pub const PT_INDEX_BITS: usize = 9;
+
+pub const TCB_SIZE_BITS: usize = seL4_TCBBits - 1;
+pub const TCB_OFFSET: usize = bit!(TCB_SIZE_BITS);

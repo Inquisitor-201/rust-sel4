@@ -8,20 +8,22 @@ use crate::{
     common::*,
     drivers::plic_init_hart,
     get_level_pgbits, get_level_pgsize, is_aligned,
-    kernel::map_kernel_window,
+    kernel::{map_kernel_window, thread::TCB, PTE},
     machine::{clear_memory, Paddr, Pregion, Vaddr, Vregion},
     println, round_down,
 };
 
 use super::{
-    activate_kernel_vspace, arch_get_n_paging, create_it_pt_cap, create_mapped_it_frame_cap,
-    create_unmapped_it_frame_cap,
+    activate_kernel_vspace, arch_get_n_paging, asidLowBits, create_it_pt_cap,
+    create_mapped_it_frame_cap, create_unmapped_it_frame_cap,
     heap::init_heap,
     structures::{
-        seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl, seL4_CapInitThreadCNode,
-        seL4_CapInitThreadIPCBuffer, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability, seL4_CapInitThreadASIDPool, seL4_CapASIDControl,
+        seL4_CapASIDControl, seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl,
+        seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
+        seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
     },
-    IT_ASID, asidLowBits,
+    thread::IDLE_THREAD_TCB,
+    IT_ASID,
 };
 
 #[link_section = ".boot.text"]
@@ -138,7 +140,7 @@ fn alloc_rootserver_obj(rootserver_mem: &mut Pregion, size_bits: usize, n: usize
     let allocated = rootserver_mem.start;
     rootserver_mem.start.0 += n * bit!(size_bits);
     unsafe {
-        core::slice::from_raw_parts_mut(allocated.0 as *mut u8, n * bit!(size_bits)).fill(0);
+        core::slice::from_raw_parts_mut(allocated.as_raw_ptr_mut::<u8>(), n * bit!(size_bits)).fill(0);
     }
     allocated
 }
@@ -345,7 +347,6 @@ impl RootServer {
         for i in 0..2usize {
             let mut pt_vptr = round_down!(it_v_reg.start.0, get_level_pgbits!(i));
             while pt_vptr < it_v_reg.end.0 {
-                println!("i = {}, pt_vptr = {:#x?}", i, pt_vptr);
                 provide_cap(
                     root_cnode_cap,
                     create_it_pt_cap(root_pt_cap, self.it_alloc_paging().0, pt_vptr, IT_ASID),
@@ -398,7 +399,6 @@ impl RootServer {
     #[link_section = ".boot.text"]
     fn create_ipcbuf_frame_cap(&self, root_cnode_cap: Capability, pd_cap: Capability, vptr: Vaddr) {
         clear_memory(self.ipc_buf, PAGE_SIZE);
-
         /* create a cap of it and write it into the root CNode */
         let cap = create_mapped_it_frame_cap(pd_cap, self.ipc_buf, vptr, IT_ASID, false);
         root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadIPCBuffer, cap);
@@ -424,7 +424,7 @@ impl RootServer {
         let mut pa = reg.start;
         while pa.0 < reg.end.0 {
             let frame_cap = if do_map {
-                create_mapped_it_frame_cap(pd_cap, pa, pa.to_pa(pv_offset), IT_ASID, true)
+                create_mapped_it_frame_cap(pd_cap, pa, pa.to_va(pv_offset), IT_ASID, true)
             } else {
                 create_unmapped_it_frame_cap(pa)
             };
@@ -449,7 +449,8 @@ impl RootServer {
         root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadASIDPool, ap_cap);
 
         /* create ASID control cap */
-        root_cnode_cap.cnode_write_slot_at(seL4_CapASIDControl, Capability::cap_asid_control_cap_new());
+        root_cnode_cap
+            .cnode_write_slot_at(seL4_CapASIDControl, Capability::cap_asid_control_cap_new());
         ap_cap
     }
 }
@@ -480,6 +481,16 @@ fn init_irqs(root_cnode_cap: Capability) {
 }
 
 #[link_section = ".boot.text"]
+pub fn create_idle_thread() -> bool {
+    let idle = IDLE_THREAD_TCB.lock();
+    let pptr = idle.tcb_pptr();
+    println!("pptr = {:#x?}", pptr);
+    let ksIdleThread = pptr;
+    //         configureIdleThread(NODE_STATE_ON_CORE(ksIdleThread, i));
+    true
+}
+
+#[link_section = ".boot.text"]
 fn try_init_kernel(
     ui_p_reg_start: Paddr,
     ui_p_reg_end: Paddr,
@@ -494,8 +505,8 @@ fn try_init_kernel(
     let boot_mem_reuse_reg = Pregion::new(Paddr(KERNEL_ELF_BASE), Paddr(ki_boot_end as _));
     let ui_reg = Pregion::new(ui_p_reg_start, ui_p_reg_end);
     let ui_v_reg = Vregion::new(
-        ui_p_reg_start.to_pa(pv_offset),
-        ui_p_reg_end.to_pa(pv_offset),
+        ui_p_reg_start.to_va(pv_offset),
+        ui_p_reg_end.to_va(pv_offset),
     );
 
     let ipcbuf_vptr = ui_v_reg.end;
@@ -544,7 +555,8 @@ fn try_init_kernel(
         &mut slot_pos_cur,
     );
     let it_ap_cap = rootserver.create_it_asid_pool(root_cnode_cap);
-    write_it_asid_pool(it_ap_cap, root_pt_cap);
+    // write_it_asid_pool(it_ap_cap, root_pt_cap);
+    create_idle_thread();
     root_cnode_cap.debug_print_cnode();
 }
 

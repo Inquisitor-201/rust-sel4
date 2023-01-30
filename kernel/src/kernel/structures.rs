@@ -15,7 +15,7 @@ pub const cap_endpoint_cap: usize = 4;
 pub const cap_notification_cap: usize = 6;
 pub const cap_reply_cap: usize = 8;
 pub const CAP_CNODE_CAP: usize = 10;
-pub const cap_asid_control_cap: usize = 11;
+pub const CAP_ASID_CONTROL_CAP: usize = 11;
 pub const cap_thread_cap: usize = 12;
 pub const CAP_ASID_POOL_CAP: usize = 13;
 pub const CAP_IRQ_CONTROL_CAP: usize = 14;
@@ -45,6 +45,8 @@ pub enum CapInfo {
     NullCap,
     FrameCap { vptr: Vaddr, pptr: Paddr },
     CnodeCap { ptr: Paddr },
+    AsidControlCap,
+    AsidPoolCap,
     PageTableCap { vptr: Vaddr, pptr: Paddr },
     IrqControlCap,
     DomainCap,
@@ -76,6 +78,8 @@ impl Capability {
             CAP_CNODE_CAP => CapInfo::CnodeCap {
                 ptr: Paddr(self.words[0].get_bits(0..35) << 1),
             },
+            CAP_ASID_CONTROL_CAP => CapInfo::AsidControlCap,
+            CAP_ASID_POOL_CAP => CapInfo::AsidPoolCap,
             CAP_IRQ_CONTROL_CAP => CapInfo::IrqControlCap,
             CAP_DOMAIN_CAP => CapInfo::DomainCap,
             CAP_PAGE_TABLE_CAP => CapInfo::PageTableCap {
@@ -218,7 +222,7 @@ impl Capability {
 
     pub fn cap_asid_control_cap_new() -> Capability {
         let mut cap = Self::new_empty();
-        cap.words[0] = cap_asid_control_cap << 59;
+        cap.words[0] = CAP_ASID_CONTROL_CAP << 59;
         cap
     }
 }
@@ -257,7 +261,7 @@ impl CapSlot {
         if index >= 1 << CONFIG_ROOT_CNODE_SIZE_BITS {
             panic!("Error: slot index exceeds max cnode size");
         }
-        unsafe { (base.0 as *mut Self).add(index).as_mut().unwrap() }
+        unsafe { base.as_raw_ptr_mut::<Self>().add(index).as_mut().unwrap() }
     }
 
     pub fn write(&mut self, cap: Capability) {

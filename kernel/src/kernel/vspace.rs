@@ -5,7 +5,7 @@ use crate::{
     common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS},
     get_level_pgbits,
     machine::{Paddr, Vaddr, Vregion},
-    mask, round_down, round_up,
+    mask, round_down, round_up, println,
 };
 use riscv::register::satp;
 use spin::{Lazy, Mutex};
@@ -61,7 +61,7 @@ impl PTE {
         (self.flags() & PTEFlags::X) != PTEFlags::empty()
     }
 
-    pub fn is_pte_pagetalbe(&self) -> bool {
+    pub fn is_pte_pagetable(&self) -> bool {
         self.is_valid() && !(self.readable() || self.writable() || self.executable())
     }
 }
@@ -136,12 +136,13 @@ pub fn arch_get_n_paging(it_v_reg: Vregion) -> usize {
     n
 }
 
+#[derive(Debug)]
 pub struct LookupPTSlotRet {
-    ptSlot: *mut PTE,
-    ptBitsLeft: usize,
+    pt_slot: *mut PTE,
+    pt_bits_left: usize,
 }
 
-fn lookupPTSlot(lvl1pt: *const PTE, vptr: Vaddr) -> LookupPTSlotRet {
+fn lookup_ptslot(lvl1pt: *const PTE, vptr: Vaddr) -> LookupPTSlotRet {
     let mut level = 2;
 
     /* this is how many bits we potentially have left to decode. Initially we have the
@@ -150,16 +151,15 @@ fn lookupPTSlot(lvl1pt: *const PTE, vptr: Vaddr) -> LookupPTSlotRet {
      * or already exists, in ret.ptSlot. The following formulation is an invariant of
      * the loop: */
     unsafe {
-        let mut ptBitsLeft = PT_INDEX_BITS * level + seL4_PageBits;
-        let mut ptSlot = lvl1pt.add((vptr.0 >> ptBitsLeft) & mask!(PT_INDEX_BITS)) as *mut PTE;
-
-        while (*ptSlot).is_pte_pagetalbe() && level > 0 {
+        let mut pt_bits_left = PT_INDEX_BITS * level + seL4_PageBits;
+        let mut pt_slot = lvl1pt.add((vptr.0 >> pt_bits_left) & mask!(PT_INDEX_BITS)) as *mut PTE;
+        while (*pt_slot).is_pte_pagetable() {
             level -= 1;
-            ptBitsLeft -= PT_INDEX_BITS;
-            ptSlot = (*ptSlot).pa().0 as *mut PTE;
-            ptSlot = ptSlot.add((vptr.0 >> ptBitsLeft) & mask!(PT_INDEX_BITS));
+            pt_bits_left -= PT_INDEX_BITS;
+            pt_slot = (*pt_slot).pa().as_raw_ptr_mut();
+            pt_slot = pt_slot.add((vptr.0 >> pt_bits_left) & mask!(PT_INDEX_BITS));
         }
-        LookupPTSlotRet { ptSlot, ptBitsLeft }
+        LookupPTSlotRet { pt_slot, pt_bits_left }
     }
 }
 
@@ -174,8 +174,8 @@ fn map_it_pt_cap(vspace_cap: Capability, pt_cap: Capability) {
     let root_pt = vspace_cap.get_pptr().0 as *mut PTE;
 
     /* Get PT slot to install the address in */
-    let pt_ret = lookupPTSlot(root_pt, pt_vptr);
-    let target_slot = pt_ret.ptSlot;
+    let pt_ret = lookup_ptslot(root_pt, pt_vptr);
+    let target_slot = pt_ret.pt_slot;
 
     unsafe {
         *target_slot = PTE::new(pt_pptr, PTEFlags::V);
@@ -190,12 +190,12 @@ fn map_it_frame_cap(vspace_cap: Capability, frame_cap: Capability) {
         _ => panic!("invalid pt_cap"),
     };
 
-    let root_pt = vspace_cap.get_pptr().0 as *mut PTE;
+    let root_pt = vspace_cap.get_pptr().as_raw_ptr_mut::<PTE>();
 
     /* Get PT slot to install the address in */
-    let pt_ret = lookupPTSlot(root_pt, pt_vptr);
-    assert!(pt_ret.ptBitsLeft == seL4_PageBits);
-    let target_slot = pt_ret.ptSlot;
+    let pt_ret = lookup_ptslot(root_pt, pt_vptr);
+    assert!(pt_ret.pt_bits_left == seL4_PageBits, "{:#x?}", pt_ret);
+    let target_slot = pt_ret.pt_slot;
 
     unsafe {
         *target_slot = PTE::new(pt_pptr, PTEFlags::R | PTEFlags::W | PTEFlags::V);
