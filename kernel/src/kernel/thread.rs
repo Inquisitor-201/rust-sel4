@@ -1,6 +1,10 @@
 use spin::{mutex::Mutex, Lazy};
 
-use crate::{bit, common::{seL4_TCBBits, TCB_OFFSET}, machine::Paddr};
+use crate::{
+    bit,
+    common::{seL4_TCBBits, TCB_OFFSET},
+    machine::Paddr,
+};
 
 #[repr(C)]
 #[repr(align(1024))]

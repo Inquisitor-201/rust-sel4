@@ -5,7 +5,7 @@ use crate::{
     common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS},
     get_level_pgbits,
     machine::{Paddr, Vaddr, Vregion},
-    mask, round_down, round_up, println,
+    mask, println, round_down, round_up,
 };
 use riscv::register::satp;
 use spin::{Lazy, Mutex};
@@ -159,7 +159,10 @@ fn lookup_ptslot(lvl1pt: *const PTE, vptr: Vaddr) -> LookupPTSlotRet {
             pt_slot = (*pt_slot).pa().as_raw_ptr_mut();
             pt_slot = pt_slot.add((vptr.0 >> pt_bits_left) & mask!(PT_INDEX_BITS));
         }
-        LookupPTSlotRet { pt_slot, pt_bits_left }
+        LookupPTSlotRet {
+            pt_slot,
+            pt_bits_left,
+        }
     }
 }
 
@@ -265,8 +268,7 @@ pub const asidHighBits: usize = 7;
 pub const asidLowBits: usize = 9;
 
 #[link_section = ".boot.text"]
-pub fn write_it_asid_pool(it_ap_cap: Capability, root_pt_cap: Capability)
-{
+pub fn write_it_asid_pool(it_ap_cap: Capability, root_pt_cap: Capability) {
     // asid_pool_t *ap = ASID_POOL_PTR(pptr_of_cap(it_ap_cap));
     // ap->array[IT_ASID] = PTE_PTR(pptr_of_cap(root_pt_cap));
     // riscvKSASIDTable[IT_ASID >> asidLowBits] = ap;

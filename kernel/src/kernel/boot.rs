@@ -140,7 +140,8 @@ fn alloc_rootserver_obj(rootserver_mem: &mut Pregion, size_bits: usize, n: usize
     let allocated = rootserver_mem.start;
     rootserver_mem.start.0 += n * bit!(size_bits);
     unsafe {
-        core::slice::from_raw_parts_mut(allocated.as_raw_ptr_mut::<u8>(), n * bit!(size_bits)).fill(0);
+        core::slice::from_raw_parts_mut(allocated.as_raw_ptr_mut::<u8>(), n * bit!(size_bits))
+            .fill(0);
     }
     allocated
 }
