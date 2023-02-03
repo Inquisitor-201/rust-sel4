@@ -16,7 +16,7 @@ pub const cap_notification_cap: usize = 6;
 pub const cap_reply_cap: usize = 8;
 pub const CAP_CNODE_CAP: usize = 10;
 pub const CAP_ASID_CONTROL_CAP: usize = 11;
-pub const cap_thread_cap: usize = 12;
+pub const CAP_THREAD_CAP: usize = 12;
 pub const CAP_ASID_POOL_CAP: usize = 13;
 pub const CAP_IRQ_CONTROL_CAP: usize = 14;
 pub const cap_irq_handler_cap: usize = 16;
@@ -40,11 +40,18 @@ pub const seL4_CapSMMUSIDControl: usize = 12; /*global SMMU SID controller cap, 
 pub const seL4_CapSMMUCBControl: usize = 13; /*global SMMU CB controller cap, null cap if not supported*/
 pub const seL4_NumInitialCaps: usize = 14;
 
+pub const tcbCTable: usize = 0; /* A TCB CNode and a TCB are always allocated together, and adjacently. The CNode comes first. */
+pub const tcbVTable: usize = 1; /* VSpace root */
+pub const tcbReply: usize = 2; /* Reply cap slot */
+pub const tcbCaller: usize = 3; /* TCB of most recent IPC sender */
+pub const tcbBuffer: usize = 4; /* IPC buffer cap slot */
+
 #[derive(Debug)]
 pub enum CapInfo {
     NullCap,
     FrameCap { vptr: Vaddr, pptr: Paddr },
     CnodeCap { ptr: Paddr },
+    ThreadCap { ptr: Paddr },
     AsidControlCap,
     AsidPoolCap,
     PageTableCap { vptr: Vaddr, pptr: Paddr },
@@ -79,6 +86,9 @@ impl Capability {
                 ptr: Paddr(self.words[0].get_bits(0..35) << 1),
             },
             CAP_ASID_CONTROL_CAP => CapInfo::AsidControlCap,
+            CAP_THREAD_CAP => CapInfo::ThreadCap {
+                ptr: Paddr(self.words[0].get_bits(0..39)),
+            },
             CAP_ASID_POOL_CAP => CapInfo::AsidPoolCap,
             CAP_IRQ_CONTROL_CAP => CapInfo::IrqControlCap,
             CAP_DOMAIN_CAP => CapInfo::DomainCap,
@@ -114,6 +124,15 @@ impl Capability {
                 }
                 println!("****************************\n");
             }
+            _ => {
+                panic!("Error: Not a cnode cap!");
+            }
+        }
+    }
+
+    pub fn cnode_slot_at(&self, index: usize) -> &mut CapSlot {
+        match self.get_info() {
+            CapInfo::CnodeCap { ptr } => CapSlot::slot_ref(ptr, index),
             _ => {
                 panic!("Error: Not a cnode cap!");
             }
@@ -225,6 +244,12 @@ impl Capability {
         cap.words[0] = CAP_ASID_CONTROL_CAP << 59;
         cap
     }
+
+    pub fn cap_thread_cap_new(cap_tcb_ptr: usize) -> Capability {
+        let mut cap = Self::new_empty();
+        cap.words[0] = CAP_THREAD_CAP << 59 | cap_tcb_ptr;
+        cap
+    }
 }
 
 #[repr(C)]
@@ -246,6 +271,10 @@ impl MDBNode {
     /// 设置mdb是否可调用(bit 0)
     pub fn set_mdb_first_badged(&mut self, v: bool) {
         self.words[1].set_bit(0, v);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.words[0] == 0 && self.words[1] == 0
     }
 }
 

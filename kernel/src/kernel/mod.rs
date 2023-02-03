@@ -5,3 +5,4 @@ mod thread;
 mod vspace;
 
 pub use vspace::*;
+pub use structures::*;

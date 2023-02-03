@@ -6,6 +6,7 @@
 mod drivers;
 mod kernel;
 mod machine;
+mod object;
 
 #[macro_use]
 mod common;

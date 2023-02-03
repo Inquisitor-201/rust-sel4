@@ -10,6 +10,7 @@ use crate::{
     get_level_pgbits, get_level_pgsize, is_aligned,
     kernel::{map_kernel_window, thread::TCB, PTE},
     machine::{clear_memory, Paddr, Pregion, Vaddr, Vregion},
+    object::cte_insert,
     println, round_down,
 };
 
@@ -22,8 +23,8 @@ use super::{
         seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
         seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
     },
-    thread::IDLE_THREAD_TCB,
-    IT_ASID,
+    thread::{TCBInner, IDLE_THREAD_TCB},
+    CapSlot, IT_ASID, tcbCTable, seL4_CapInitThreadTCB,
 };
 
 #[link_section = ".boot.text"]
@@ -398,11 +399,17 @@ impl RootServer {
     }
 
     #[link_section = ".boot.text"]
-    fn create_ipcbuf_frame_cap(&self, root_cnode_cap: Capability, pd_cap: Capability, vptr: Vaddr) {
+    fn create_ipcbuf_frame_cap(
+        &self,
+        root_cnode_cap: Capability,
+        pd_cap: Capability,
+        vptr: Vaddr,
+    ) -> Capability {
         clear_memory(self.ipc_buf, PAGE_SIZE);
         /* create a cap of it and write it into the root CNode */
         let cap = create_mapped_it_frame_cap(pd_cap, self.ipc_buf, vptr, IT_ASID, false);
         root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadIPCBuffer, cap);
+        cap
     }
 
     #[link_section = ".boot.text"]
@@ -454,6 +461,39 @@ impl RootServer {
             .cnode_write_slot_at(seL4_CapASIDControl, Capability::cap_asid_control_cap_new());
         ap_cap
     }
+
+    #[link_section = ".boot.text"]
+    pub fn create_initial_thread(
+        &self,
+        root_cnode_cap: Capability,
+        it_pd_cap: Capability,
+        ui_v_entry: Vaddr,
+        bi_frame_vptr: Vaddr,
+        ipcbuf_vptr: Vaddr,
+        ipcbuf_cap: Capability,
+    ) -> &mut TCBInner {
+        let tcb_inner = unsafe { self.tcb.as_mut::<TCB>().inner_mut() };
+
+        tcb_inner.init_context();
+
+        // todo: derive ipc buffer cap
+        cte_insert(
+            root_cnode_cap,
+            &root_cnode_cap.cnode_slot_at(seL4_CapInitThreadCNode),
+            CapSlot::slot_ref(self.tcb, tcbCTable),
+        );
+
+        // todo: cte insert root_pt_cap & ipc buf cap
+        // todo: set tcbIPCBuffer, capRegister, nextPC, tcbPriority, tcbMCP, tcbDomain
+        // todo: set threadState
+        // todo: set Cur_domain
+
+        /* create initial thread's TCB cap */
+        let cap = Capability::cap_thread_cap_new(tcb_inner as *mut _ as _);
+        root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadTCB, cap);
+
+        tcb_inner
+    }
 }
 
 #[link_section = ".boot.text"]
@@ -484,7 +524,7 @@ fn init_irqs(root_cnode_cap: Capability) {
 #[link_section = ".boot.text"]
 pub fn create_idle_thread() -> bool {
     let idle = IDLE_THREAD_TCB.lock();
-    let pptr = idle.tcb_pptr();
+    let pptr = idle.pptr();
     println!("pptr = {:#x?}", pptr);
     let ksIdleThread = pptr;
     //         configureIdleThread(NODE_STATE_ON_CORE(ksIdleThread, i));
@@ -546,7 +586,7 @@ fn try_init_kernel(
 
     /* Create and map bootinfo frame cap */
     rootserver.create_bi_frame_cap(root_cnode_cap, root_pt_cap, bi_frame_vptr);
-    rootserver.create_ipcbuf_frame_cap(root_cnode_cap, root_pt_cap, ipcbuf_vptr);
+    let ipcbuf_cap = rootserver.create_ipcbuf_frame_cap(root_cnode_cap, root_pt_cap, ipcbuf_vptr);
     rootserver.create_frames_of_region(
         root_cnode_cap,
         root_pt_cap,
@@ -558,6 +598,14 @@ fn try_init_kernel(
     let it_ap_cap = rootserver.create_it_asid_pool(root_cnode_cap);
     // write_it_asid_pool(it_ap_cap, root_pt_cap);
     create_idle_thread();
+    let initial = rootserver.create_initial_thread(
+        root_cnode_cap,
+        root_pt_cap,
+        v_entry,
+        bi_frame_vptr,
+        ipcbuf_vptr,
+        ipcbuf_cap,
+    );
     root_cnode_cap.debug_print_cnode();
 }
 

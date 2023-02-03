@@ -1,9 +1,11 @@
 mod io;
 mod sbi;
+mod registerset;
 
 use core::fmt::{self, Debug, Formatter};
 pub use io::*;
 pub use sbi::*;
+pub use registerset::*;
 
 use crate::{
     common::{seL4_PageBits, PAGE_SIZE},
