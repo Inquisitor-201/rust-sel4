@@ -9,7 +9,7 @@ use crate::{
 // capability types
 pub const CAP_NULL_CAP: usize = 0;
 pub const CAP_FRAME_CAP: usize = 1;
-pub const cap_untyped_cap: usize = 2;
+pub const CAP_UNTYPED_CAP: usize = 2;
 pub const CAP_PAGE_TABLE_CAP: usize = 3;
 pub const cap_endpoint_cap: usize = 4;
 pub const cap_notification_cap: usize = 6;
@@ -49,12 +49,27 @@ pub const tcbBuffer: usize = 4; /* IPC buffer cap slot */
 #[derive(Debug)]
 pub enum CapInfo {
     NullCap,
-    FrameCap { vptr: Vaddr, pptr: Paddr },
-    CnodeCap { ptr: Paddr },
-    ThreadCap { ptr: Paddr },
+    FrameCap {
+        vptr: Vaddr,
+        pptr: Paddr,
+    },
+    UntypedCap {
+        pptr: Paddr,
+        is_device: bool,
+        size_bits: usize,
+    },
+    CnodeCap {
+        ptr: Paddr,
+    },
+    ThreadCap {
+        ptr: Paddr,
+    },
     AsidControlCap,
     AsidPoolCap,
-    PageTableCap { vptr: Vaddr, pptr: Paddr },
+    PageTableCap {
+        vptr: Vaddr,
+        pptr: Paddr,
+    },
     IrqControlCap,
     DomainCap,
 }
@@ -81,6 +96,11 @@ impl Capability {
             CAP_FRAME_CAP => CapInfo::FrameCap {
                 vptr: Vaddr(self.words[0].get_bits(0..39)),
                 pptr: Paddr(self.words[1].get_bits(9..48)),
+            },
+            CAP_UNTYPED_CAP => CapInfo::UntypedCap {
+                pptr: Paddr(self.words[0].get_bits(0..35)),
+                is_device: self.words[1].get_bit(6) as _,
+                size_bits: self.words[1].get_bits(0..6),
             },
             CAP_CNODE_CAP => CapInfo::CnodeCap {
                 ptr: Paddr(self.words[0].get_bits(0..35) << 1),
@@ -248,6 +268,18 @@ impl Capability {
     pub fn cap_thread_cap_new(cap_tcb_ptr: usize) -> Capability {
         let mut cap = Self::new_empty();
         cap.words[0] = CAP_THREAD_CAP << 59 | cap_tcb_ptr;
+        cap
+    }
+
+    pub fn cap_untyped_cap_new(
+        capFreeIndex: usize,
+        capIsDevice: bool,
+        capBlockSize: usize,
+        capPtr: usize,
+    ) -> Capability {
+        let mut cap = Self::new_empty();
+        cap.words[0] = CAP_UNTYPED_CAP << 59 | capPtr;
+        cap.words[1] = capFreeIndex << 25 | (capIsDevice as usize) << 6 | capBlockSize;
         cap
     }
 }

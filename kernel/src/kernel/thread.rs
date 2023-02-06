@@ -14,8 +14,13 @@ pub struct TCBInner {
 }
 
 impl TCBInner {
-    pub fn init_context(&mut self)
-    {
+    pub fn new_empty() -> Self {
+        Self {
+            registers: [0; Rv64Reg::n_contextRegisters as _],
+        }
+    }
+
+    pub fn init_context(&mut self) {
         /* Enable supervisor interrupts (when going to user-mode) */
         self.registers[Rv64Reg::SSTATUS as usize] = SSTATUS_SPIE;
     }
