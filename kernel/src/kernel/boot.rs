@@ -278,10 +278,7 @@ fn init_freemem(
 }
 
 #[link_section = ".boot.text"]
-fn arch_init_freemem(
-    ui_reg: Pregion,
-    it_v_reg: Vregion,
-) -> (Vec<Pregion>, Vec<Pregion>, RootServer) {
+fn arch_init_freemem(ui_reg: Pregion, it_v_reg: Vregion) -> RootServer {
     let mut res_reg = Vec::new(); // reserved region
     extern "C" {
         fn ki_end();
@@ -292,7 +289,12 @@ fn arch_init_freemem(
 
     let avail_reg = Pregion::new(Paddr(AVAIL_REGION_START), Paddr(AVAIL_REGION_END));
     let (rootserver, freemem) = init_freemem(&res_reg, avail_reg, it_v_reg, 0).unwrap();
-    (res_reg, freemem, rootserver)
+
+    let mut bs = boot_state.lock();
+    bs.freemem = freemem;
+    bs.reserved = Vec::from([avail_reg]);
+
+    rootserver
 }
 
 #[link_section = ".boot.text"]
@@ -566,6 +568,16 @@ impl RootServer {
             }
             start = res.end.0;
         }
+        if start < CONFIG_PADDR_USER_DEVICE_TOP {
+            let reg = Pregion::new(Paddr(start), Paddr(CONFIG_PADDR_USER_DEVICE_TOP));
+            if !self.create_untypeds_for_region(root_cnode_cap, true, reg, first_untyped_slot) {
+                println!(
+                    "ERROR: creation of untypeds for top device region {:#x?} failed\n",
+                    reg
+                );
+                return false;
+            }
+        }
         true
     }
 }
@@ -684,7 +696,7 @@ fn try_init_kernel(
         );
     }
 
-    let (res_reg, freemem, mut rootserver) = arch_init_freemem(ui_reg, it_v_reg);
+    let mut rootserver = arch_init_freemem(ui_reg, it_v_reg);
     println!("rootserver = {:#x?}", rootserver);
 
     /* create the root cnode */
@@ -695,11 +707,6 @@ fn try_init_kernel(
 
     /* create the bootinfo frame */
     rootserver.populate_bi_frame(0, 1, ipcbuf_vptr, 0);
-
-    let mut bs = boot_state.lock();
-    bs.freemem = freemem;
-    bs.reserved = res_reg;
-    drop(bs);
 
     let root_pt_cap = rootserver.create_it_address_space(root_cnode_cap, it_v_reg);
 

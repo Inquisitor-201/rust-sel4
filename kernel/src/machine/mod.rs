@@ -114,9 +114,9 @@ impl Debug for Paddr {
 impl Debug for Vregion {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
-            "Vregion[{:#x?}..{:#x?}]",
+            "Vregion[{:#x?}..{:#x?})",
             self.start.0,
-            self.end.0 - 1
+            self.end.0
         ))
     }
 }
@@ -124,9 +124,9 @@ impl Debug for Vregion {
 impl Debug for Pregion {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
-            "Pregion[{:#x?}..{:#x?}]",
+            "Pregion[{:#x?}..{:#x?})",
             self.start.0,
-            self.end.0 - 1
+            self.end.0
         ))
     }
 }

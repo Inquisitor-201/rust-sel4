@@ -40,6 +40,7 @@ pub const PAGE_PTES: usize = PAGE_SIZE / 8;
 pub const PTE_FLAG_BITS: usize = 10;
 
 pub const USER_TOP: usize = 0x3ffffff000;
+pub const CONFIG_PADDR_USER_DEVICE_TOP: usize = 0x8000000000;
 
 pub const AVAIL_REGION_START: usize = 0x80200000;
 pub const AVAIL_REGION_END: usize = 0x90000000;

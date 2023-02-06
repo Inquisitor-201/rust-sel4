@@ -98,7 +98,7 @@ impl Capability {
                 pptr: Paddr(self.words[1].get_bits(9..48)),
             },
             CAP_UNTYPED_CAP => CapInfo::UntypedCap {
-                pptr: Paddr(self.words[0].get_bits(0..35)),
+                pptr: Paddr(self.words[0].get_bits(0..39)),
                 is_device: self.words[1].get_bit(6) as _,
                 size_bits: self.words[1].get_bits(0..6),
             },
