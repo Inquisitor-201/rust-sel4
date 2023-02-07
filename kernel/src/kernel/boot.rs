@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     activate_kernel_vspace, arch_get_n_paging, asidLowBits,
-    bootinfo::{BootInfo, UntypedDesc},
+    bootinfo::{BootInfo, SlotRegion, UntypedDesc},
     create_it_pt_cap, create_mapped_it_frame_cap, create_unmapped_it_frame_cap,
     heap::init_heap,
     seL4_CapInitThreadTCB,
@@ -40,7 +40,7 @@ struct BootState<'a> {
     bi_frame: Option<&'a mut BootInfo>,
 }
 
-static boot_state: Lazy<Mutex<BootState>> = Lazy::new(|| {
+static BOOT_STATE: Lazy<Mutex<BootState>> = Lazy::new(|| {
     Mutex::new(BootState {
         slot_pos_cur: 0,
         reserved: Vec::new(),
@@ -290,7 +290,7 @@ fn arch_init_freemem(ui_reg: Pregion, it_v_reg: Vregion) -> RootServer {
     let avail_reg = Pregion::new(Paddr(AVAIL_REGION_START), Paddr(AVAIL_REGION_END));
     let (rootserver, freemem) = init_freemem(&res_reg, avail_reg, it_v_reg, 0).unwrap();
 
-    let mut bs = boot_state.lock();
+    let mut bs = BOOT_STATE.lock();
     bs.freemem = freemem;
     bs.reserved = Vec::from([avail_reg]);
 
@@ -404,7 +404,7 @@ impl RootServer {
 
         /* initialise bootinfo-related global state */
         // seL4_BootInfo *bi = BI_PTR(rootserver.boot_info);
-        let mut bs = boot_state.lock();
+        let mut bs = BOOT_STATE.lock();
         let bi = unsafe { self.boot_info.as_mut::<BootInfo>() };
         bi.node_id = node_id;
         bi.num_nodes = num_nodes;
@@ -519,6 +519,7 @@ impl RootServer {
         tcb_inner
     }
 
+    #[link_section = ".boot.text"]
     fn create_untypeds_for_region(
         &self,
         root_cnode_cap: Capability,
@@ -549,11 +550,13 @@ impl RootServer {
         true
     }
 
+    #[link_section = ".boot.text"]
     pub fn create_untypeds(&self, root_cnode_cap: Capability, boot_mem_reuse_reg: Pregion) -> bool {
-        let bs = boot_state.lock();
+        let bs = BOOT_STATE.lock();
         let first_untyped_slot = bs.slot_pos_cur;
         let mut start = 0;
         let reserved = bs.reserved.clone();
+        let freemem = bs.freemem.clone();
         drop(bs);
         for res in reserved.iter() {
             if start < res.start.0 {
@@ -578,6 +581,33 @@ impl RootServer {
                 return false;
             }
         }
+        if !self.create_untypeds_for_region(
+            root_cnode_cap,
+            false,
+            boot_mem_reuse_reg,
+            first_untyped_slot,
+        ) {
+            println!(
+                "ERROR: creation of untypeds for recycled boot memory {:#x?} failed\n",
+                boot_mem_reuse_reg
+            );
+            return false;
+        }
+        /* convert remaining freemem into UT objects and provide the caps */
+        for &reg in freemem.iter() {
+            if !self.create_untypeds_for_region(root_cnode_cap, false, reg, first_untyped_slot) {
+                println!(
+                    "ERROR: creation of untypeds for free memory region {:#x?} failed\n",
+                    reg
+                );
+                return false;
+            }
+        }
+        let mut bs = BOOT_STATE.lock();
+        bs.bi_frame.as_mut().unwrap().untyped = SlotRegion {
+            start: first_untyped_slot,
+            end: bs.slot_pos_cur,
+        };
         true
     }
 }
@@ -585,7 +615,7 @@ impl RootServer {
 #[link_section = ".boot.text"]
 /// 向root_cnode_cap指向的cnode的空闲cap区域中填写一个cap
 fn provide_cap(root_cnode_cap: Capability, cap: Capability) -> bool {
-    let mut bs = boot_state.lock();
+    let mut bs = BOOT_STATE.lock();
     if bs.slot_pos_cur >= bit!(CONFIG_ROOT_CNODE_SIZE_BITS) {
         println!(
             "ERROR: can't add another cap, all {} slots used\n",
@@ -607,13 +637,13 @@ fn provide_untyped_cap(
     size_bits: usize,
     first_untyped_slot: usize,
 ) -> bool {
-    let mut bs = boot_state.lock();
+    let mut bs = BOOT_STATE.lock();
     let i = bs.slot_pos_cur - first_untyped_slot;
     if i < CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS {
         let bi_frame = bs.bi_frame.as_mut().unwrap();
         bi_frame.untyped_list[i] = UntypedDesc {
             paddr: pptr.0,
-            padding: [0; 6],
+            _padding: [0; 6],
             size_bits: size_bits as _,
             is_device: device_memory as _,
         };
@@ -657,6 +687,12 @@ pub fn create_idle_thread() -> bool {
 pub fn init_core_state(scheduler_action: &'static TCBInner) {
     *(ksSchedulerAction.lock()) = Some(scheduler_action);
     *(ksCurThread.lock()) = *(ksIdleThread.lock());
+}
+
+#[link_section = ".boot.text"]
+pub fn bi_finalise() {
+    let mut bs = BOOT_STATE.lock();
+    bs.bi_frame.as_mut().unwrap().empty = SlotRegion::new(bs.slot_pos_cur, bit!(CONFIG_ROOT_CNODE_SIZE_BITS));
 }
 
 #[link_section = ".boot.text"]
@@ -726,7 +762,14 @@ fn try_init_kernel(
         ipcbuf_cap,
     );
     init_core_state(initial);
-    rootserver.create_untypeds(root_cnode_cap, boot_mem_reuse_reg);
+    if !rootserver.create_untypeds(root_cnode_cap, boot_mem_reuse_reg) {
+        panic!("create_untypeds failed");
+    }
+    
+    /* finalise the bootinfo frame */
+    bi_finalise();
+
+    BOOT_STATE.lock().bi_frame.as_ref().unwrap().debug_print_info();
     root_cnode_cap.debug_print_cnode();
 }
 
