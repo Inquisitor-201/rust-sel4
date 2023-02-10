@@ -17,20 +17,20 @@ use crate::{
 };
 
 use super::{
-    activate_kernel_vspace, arch_get_n_paging, asidLowBits,
+    activate_kernel_vspace, riscv_get_n_paging, asidLowBits,
     bootinfo::{BootInfo, SlotRegion, UntypedDesc},
     create_it_pt_cap, create_mapped_it_frame_cap, create_unmapped_it_frame_cap,
     heap::init_heap,
     seL4_CapInitThreadTCB,
-    statedata::{ksCurThread, ksIdleThread, ksSchedulerAction},
+    statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
     structures::{
         seL4_CapASIDControl, seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl,
         seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
         seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
     },
     tcbCTable,
-    thread::{TCBInner, IDLE_THREAD_TCB},
-    CapSlot, IT_ASID,
+    thread::{TCBInner, IDLE_THREAD_TCB, ThreadState_Running, schedule, activate_thread},
+    CapSlot, IT_ASID, PageTable, tcbVTable,
 };
 
 struct BootState<'a> {
@@ -131,7 +131,7 @@ fn calculate_rootserver_size(it_v_reg: Vregion, extra_bi_size_bits: usize) -> us
     };
     size += bit!(seL4_VSpaceBits); // root vspace
                                    /* for all archs, seL4_PageTable Bits is the size of all non top-level paging structures */
-    size + arch_get_n_paging(it_v_reg) * bit!(seL4_PageTableBits)
+    size + riscv_get_n_paging(it_v_reg) * bit!(seL4_PageTableBits)
 }
 
 /// 分配大小为extra_bi_size_bits的extra_bootinfo
@@ -193,7 +193,7 @@ fn create_rootserver_objects(
     let boot_info = alloc_rootserver_obj(&mut rootserver_mem, BI_FRAME_SIZE_BITS, 1);
 
     // /* paging structures are 4k on every arch except aarch32 (1k) */
-    let n = arch_get_n_paging(it_v_reg);
+    let n = riscv_get_n_paging(it_v_reg);
     let paging_start = alloc_rootserver_obj(&mut rootserver_mem, seL4_PageTableBits, n);
     let paging_end = Paddr(paging_start.0 + n * bit!(seL4_PageTableBits));
 
@@ -278,7 +278,7 @@ fn init_freemem(
 }
 
 #[link_section = ".boot.text"]
-fn arch_init_freemem(ui_reg: Pregion, it_v_reg: Vregion) -> RootServer {
+fn riscv_init_freemem(ui_reg: Pregion, it_v_reg: Vregion) -> RootServer {
     let mut res_reg = Vec::new(); // reserved region
     extern "C" {
         fn ki_end();
@@ -358,7 +358,7 @@ impl RootServer {
         //  cap_t      lvl1pt_cap;
         //  vptr_t     pt_vptr;
 
-        //  copyGlobalMappings(PTE_PTR(rootserver.vspace));
+        unsafe { self.vspace.as_mut::<PageTable>().map_kernel_window() }
 
         let root_pt_cap = Capability::cap_page_table_cap_new(
             IT_ASID,            /* capPTMappedASID    */
@@ -507,9 +507,16 @@ impl RootServer {
             CapSlot::slot_ref(self.tcb, tcbCTable),
         );
 
-        // todo: cte insert root_pt_cap & ipc buf cap
-        // todo: set tcbIPCBuffer, capRegister, nextPC, tcbPriority, tcbMCP, tcbDomain
-        // todo: set threadState
+        cte_insert(
+            it_pd_cap,
+            &root_cnode_cap.cnode_slot_at(seL4_CapInitThreadVSpace),
+            CapSlot::slot_ref(self.tcb, tcbVTable),
+        );
+
+        // todo: cte insert ipc_buf cap
+        // todo: set tcbIPCBuffer, capRegister, nextPC, tcbMCP, tcbDomain
+        tcb_inner.tcbPriority = seL4_MaxPrio;
+        tcb_inner.set_thread_state(ThreadState_Running);
         // todo: set Cur_domain
 
         /* create initial thread's TCB cap */
@@ -677,7 +684,7 @@ pub fn create_idle_thread() -> bool {
     let idle = IDLE_THREAD_TCB.lock();
     let pptr = idle.pptr();
     unsafe {
-        *(ksIdleThread.lock()) = Some(pptr.as_ref::<TCB>().inner());
+        *(ksIdleThread.lock()) = Some(pptr.as_ref::<TCB>().inner_mut());
     }
     //         configureIdleThread(NODE_STATE_ON_CORE(ksIdleThread, i));
     true
@@ -685,7 +692,7 @@ pub fn create_idle_thread() -> bool {
 
 #[link_section = ".boot.text"]
 pub fn init_core_state(scheduler_action: &'static TCBInner) {
-    *(ksSchedulerAction.lock()) = Some(scheduler_action);
+    *(ksSchedulerAction.lock()) = SchedulerAction::SwitchToThread(scheduler_action);
     *(ksCurThread.lock()) = *(ksIdleThread.lock());
 }
 
@@ -732,7 +739,7 @@ fn try_init_kernel(
         );
     }
 
-    let mut rootserver = arch_init_freemem(ui_reg, it_v_reg);
+    let mut rootserver = riscv_init_freemem(ui_reg, it_v_reg);
     println!("rootserver = {:#x?}", rootserver);
 
     /* create the root cnode */
@@ -771,6 +778,7 @@ fn try_init_kernel(
 
     BOOT_STATE.lock().bi_frame.as_ref().unwrap().debug_print_info();
     root_cnode_cap.debug_print_cnode();
+    println!("Booting all finished, dropped to user space");
 }
 
 #[link_section = ".boot.text"]
@@ -782,7 +790,7 @@ pub fn init_kernel(
     v_entry: Vaddr,
     dtb_addr_p: Paddr,
     dtb_size: usize,
-) -> ! {
+) {
     clear_bss();
     init_heap();
     let result = try_init_kernel(
@@ -793,5 +801,7 @@ pub fn init_kernel(
         dtb_addr_p,
         dtb_size,
     );
-    panic!("init kernel end")
+
+    schedule();
+    activate_thread();
 }

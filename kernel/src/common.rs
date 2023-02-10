@@ -65,3 +65,8 @@ pub const TCB_SIZE_BITS: usize = seL4_TCBBits - 1;
 pub const TCB_OFFSET: usize = bit!(TCB_SIZE_BITS);
 
 pub const CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS: usize = 230;
+
+// threads
+pub const CONFIG_NUM_PRIORITIES: usize = 256;
+pub const seL4_MinPrio: usize = 0;
+pub const seL4_MaxPrio: usize = CONFIG_NUM_PRIORITIES - 1;

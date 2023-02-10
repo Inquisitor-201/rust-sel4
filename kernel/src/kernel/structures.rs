@@ -69,6 +69,7 @@ pub enum CapInfo {
     PageTableCap {
         vptr: Vaddr,
         pptr: Paddr,
+        asid: usize,
     },
     IrqControlCap,
     DomainCap,
@@ -115,6 +116,7 @@ impl Capability {
             CAP_PAGE_TABLE_CAP => CapInfo::PageTableCap {
                 vptr: Vaddr(self.words[0].get_bits(0..39)),
                 pptr: Paddr(self.words[1].get_bits(9..48)),
+                asid: self.words[1].get_bits(48..64),
             },
             _ => unimplemented!("unknown capability type {}", self.get_type_raw()),
         }

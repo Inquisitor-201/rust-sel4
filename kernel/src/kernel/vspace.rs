@@ -5,12 +5,16 @@ use crate::{
     common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS},
     get_level_pgbits,
     machine::{Paddr, Vaddr, Vregion},
-    mask, println, round_down, round_up,
+    mask, round_down, round_up,
 };
 use riscv::register::satp;
 use spin::{Lazy, Mutex};
 
-use super::structures::{CapInfo, Capability};
+use super::{
+    structures::{CapInfo, Capability},
+    tcbVTable,
+    thread::TCBInner,
+};
 
 pub const ASID_INVALID: usize = 0;
 pub const IT_ASID: usize = 1;
@@ -69,20 +73,20 @@ impl PTE {
 #[repr(C)]
 #[repr(align(4096))]
 #[derive(Debug)]
-pub struct KernelPagetable {
+pub struct PageTable {
     root: [PTE; PAGE_PTES],
 }
 
-pub static KERNEL_PT: Lazy<Mutex<KernelPagetable>> = Lazy::new(|| {
+pub static KERNEL_PT: Lazy<Mutex<PageTable>> = Lazy::new(|| {
     Mutex::new({
-        KernelPagetable {
+        PageTable {
             root: [PTE(0); PAGE_PTES],
         }
     })
 });
 
-impl KernelPagetable {
-    fn map_kernel_window(&mut self) {
+impl PageTable {
+    pub fn map_kernel_window(&mut self) {
         let pa = Paddr(round_down!(KERNEL_ELF_BASE, get_level_pgbits!(0)));
         let va = Vaddr(pa.0);
 
@@ -104,16 +108,17 @@ impl KernelPagetable {
         8 << 60 | (root_pa as usize >> seL4_PageBits)
     }
 
-    fn activate(&self) {
+    fn activate(&self, asid: usize) {
+        assert!(asid <= 0xffff);
         unsafe {
-            satp::write(self.satp() as usize);
+            satp::write(asid << 44 | self.satp() as usize);
             asm!("sfence.vma");
         }
     }
 }
 
 pub fn activate_kernel_vspace() {
-    KERNEL_PT.lock().activate();
+    KERNEL_PT.lock().activate(0);
 }
 
 pub fn map_kernel_window() {
@@ -128,7 +133,7 @@ fn get_n_paging(v_reg: Vregion, bits: usize) -> usize {
 }
 
 #[link_section = ".boot.text"]
-pub fn arch_get_n_paging(it_v_reg: Vregion) -> usize {
+pub fn riscv_get_n_paging(it_v_reg: Vregion) -> usize {
     let mut n = 0;
     for i in 0..2usize {
         n += get_n_paging(it_v_reg, get_level_pgbits!(i));
@@ -170,7 +175,7 @@ fn lookup_ptslot(lvl1pt: *const PTE, vptr: Vaddr) -> LookupPTSlotRet {
 #[link_section = ".boot.text"]
 fn map_it_pt_cap(vspace_cap: Capability, pt_cap: Capability) {
     let (pt_vptr, pt_pptr) = match pt_cap.get_info() {
-        CapInfo::PageTableCap { vptr, pptr } => (vptr, pptr),
+        CapInfo::PageTableCap { vptr, pptr, .. } => (vptr, pptr),
         _ => panic!("invalid pt_cap"),
     };
 
@@ -181,7 +186,7 @@ fn map_it_pt_cap(vspace_cap: Capability, pt_cap: Capability) {
     let target_slot = pt_ret.pt_slot;
 
     unsafe {
-        *target_slot = PTE::new(pt_pptr, PTEFlags::V);
+        *target_slot = PTE::new(pt_pptr, PTEFlags::V | PTEFlags::U);
         asm!("sfence.vma");
     }
 }
@@ -201,7 +206,10 @@ fn map_it_frame_cap(vspace_cap: Capability, frame_cap: Capability) {
     let target_slot = pt_ret.pt_slot;
 
     unsafe {
-        *target_slot = PTE::new(pt_pptr, PTEFlags::R | PTEFlags::W | PTEFlags::V);
+        *target_slot = PTE::new(
+            pt_pptr,
+            PTEFlags::R | PTEFlags::W | PTEFlags::V | PTEFlags::U,
+        );
         asm!("sfence.vma");
     }
 }
@@ -272,6 +280,16 @@ pub fn write_it_asid_pool(it_ap_cap: Capability, root_pt_cap: Capability) {
     // asid_pool_t *ap = ASID_POOL_PTR(pptr_of_cap(it_ap_cap));
     // ap->array[IT_ASID] = PTE_PTR(pptr_of_cap(root_pt_cap));
     // riscvKSASIDTable[IT_ASID >> asidLowBits] = ap;
-    
+
     // todo: write it asid pool
+}
+
+pub fn set_vm_root(tcb: &TCBInner) {
+    let thread_root_cap = tcb.tcb_cte_slot(tcbVTable).cap;
+    match thread_root_cap.get_info() {
+        CapInfo::PageTableCap { pptr, asid, .. } => unsafe {
+            pptr.as_ref::<PageTable>().activate(asid)
+        },
+        _ => panic!("set_vm_root: thread_root_cap is not a PageTableCap"),
+    }
 }

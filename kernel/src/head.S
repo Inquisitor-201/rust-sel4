@@ -7,6 +7,7 @@ _start:
     # add  sp, t1, t0
     la sp, boot_stack_top
     jal init_kernel
+    jal restore_user_context
 
     .section .bss.stack
     .globl boot_stack
