@@ -1,6 +1,6 @@
 
 OUTPUT_ARCH(riscv)
-ENTRY(_start)
+ENTRY(_sel4_start)
 
 BASE_ADDRESS = 0x10000;
 
