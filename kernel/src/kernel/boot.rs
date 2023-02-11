@@ -10,7 +10,7 @@ use crate::{
     drivers::plic_init_hart,
     get_level_pgbits, get_level_pgsize, is_aligned,
     kernel::{map_kernel_window, thread::TCB, PTE},
-    machine::{clear_memory, Paddr, Pregion, Vaddr, Vregion},
+    machine::{clear_memory, Paddr, Pregion, Vaddr, Vregion, Rv64Reg},
     max_free_index,
     object::cte_insert,
     println, round_down,
@@ -514,8 +514,10 @@ impl RootServer {
         );
 
         // todo: cte insert ipc_buf cap
-        // todo: set tcbIPCBuffer, capRegister, nextPC, tcbMCP, tcbDomain
-        tcb_inner.tcbPriority = seL4_MaxPrio;
+        // todo: set tcbIPCBuffer, tcbMCP, tcbDomain
+        tcb_inner.registers[Rv64Reg::a0 as usize] = bi_frame_vptr.0;
+        tcb_inner.registers[Rv64Reg::Sepc as usize] = ui_v_entry.0;
+        tcb_inner.tcb_priority = seL4_MaxPrio;
         tcb_inner.set_thread_state(ThreadState_Running);
         // todo: set Cur_domain
 

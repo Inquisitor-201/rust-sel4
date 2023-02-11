@@ -39,7 +39,7 @@ pub enum Rv64Reg {
     SCAUSE = 31,
     SSTATUS = 32,
     FaultIP = 33, /* SEPC */
-    NextIP = 34,
+    Sepc = 34,
 
     /* TODO: add other user-level CSRs if needed (i.e. to avoid channels) */
 

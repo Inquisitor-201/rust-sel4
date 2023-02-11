@@ -35,7 +35,7 @@ pub struct ThreadState {
 pub struct TCBInner {
     pub registers: [usize; Rv64Reg::n_contextRegisters as _],
     pub tcb_state: ThreadState,
-    pub tcbPriority: usize,
+    pub tcb_priority: usize,
 }
 
 impl TCBInner {
@@ -45,7 +45,7 @@ impl TCBInner {
             tcb_state: ThreadState {
                 ts_type: ThreadState_Inactive,
             },
-            tcbPriority: seL4_MinPrio,
+            tcb_priority: seL4_MinPrio,
         }
     }
 
@@ -139,7 +139,7 @@ pub fn schedule() {
                  * Don't look at ksCurThread prio when it's idle, to respect
                  * information flow in non-fastpath cases. */
                 let fastfail = cur_thread.ptr_eq(ksIdleThread.lock().unwrap())
-                    && candidate.tcbPriority < cur_thread.tcbPriority;
+                    && candidate.tcb_priority < cur_thread.tcb_priority;
                 if fastfail {
                     todo!("scheduleChooseNewThread");
                 } else {

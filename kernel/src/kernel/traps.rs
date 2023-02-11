@@ -11,6 +11,5 @@ pub fn restore_user_context() {
     extern "C" {
         fn __restore(_: usize);
     }
-    panic!("restore");
     unsafe { __restore(cur_thread_reg) };
 }

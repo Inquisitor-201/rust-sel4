@@ -208,7 +208,7 @@ fn map_it_frame_cap(vspace_cap: Capability, frame_cap: Capability) {
     unsafe {
         *target_slot = PTE::new(
             pt_pptr,
-            PTEFlags::R | PTEFlags::W | PTEFlags::V | PTEFlags::U,
+            PTEFlags::R | PTEFlags::W |  PTEFlags::X | PTEFlags::V | PTEFlags::U,
         );
         asm!("sfence.vma");
     }
