@@ -5,9 +5,13 @@
 
 use core::arch::global_asm;
 
+use runtime::{BootInfo, Env};
+
 // extern crate alloc;
 
 mod lang_items;
+pub mod syscall;
+pub mod runtime;
 // use buddy_system_allocator::LockedHeap;
 
 // const USER_HEAP_SIZE: usize = 32768;
@@ -23,13 +27,14 @@ mod lang_items;
 // static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
 #[no_mangle]
-pub fn sel4_start_root(bootinfo: usize) -> usize {
-    return bootinfo;
+pub fn sel4runtime_start_main(bootinfo: *const BootInfo) -> i64 {
+    let env = Env::new(bootinfo);
+    main()
 }
 
 #[linkage = "weak"]
 #[no_mangle]
-fn main(_argc: usize, _argv: &[&str]) -> i32 {
+fn main() -> i64 {
     panic!("Cannot find main!");
 }
 

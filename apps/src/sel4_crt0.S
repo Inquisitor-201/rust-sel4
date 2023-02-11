@@ -3,8 +3,7 @@
 
 _sel4_start:
     la sp, __stack_top
-    jal sel4_start_root
-    mv t0, a0
+    jal sel4runtime_start_main
 
 .section .bss
 __stack_base:

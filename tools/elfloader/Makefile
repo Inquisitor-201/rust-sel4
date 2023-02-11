@@ -102,6 +102,7 @@ gdb:
 monitor:
 	riscv64-unknown-elf-gdb -ex 'file $(IMAGE_ELF)' \
 		-ex 'add-symbol-file $(KERNEL_ELF)' \
+		-ex 'add-symbol-file $(ROOTSERVER_ELF)' \
 		-ex 'set arch riscv:rv64' \
 		-ex 'target remote localhost:1234'
 
