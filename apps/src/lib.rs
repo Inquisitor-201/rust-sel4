@@ -10,8 +10,8 @@ use runtime::{BootInfo, Env};
 // extern crate alloc;
 
 mod lang_items;
-pub mod syscall;
 pub mod runtime;
+pub mod syscall;
 // use buddy_system_allocator::LockedHeap;
 
 // const USER_HEAP_SIZE: usize = 32768;

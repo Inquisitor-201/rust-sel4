@@ -1,8 +1,8 @@
 mod bootinfo;
 mod constants;
 mod env;
-mod structures;
 mod stdio;
+mod structures;
 
 pub use bootinfo::*;
 pub use constants::*;

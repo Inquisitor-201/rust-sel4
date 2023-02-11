@@ -10,27 +10,27 @@ use crate::{
     drivers::plic_init_hart,
     get_level_pgbits, get_level_pgsize, is_aligned,
     kernel::{map_kernel_window, thread::TCB, PTE},
-    machine::{clear_memory, Paddr, Pregion, Vaddr, Vregion, Rv64Reg},
+    machine::{clear_memory, Paddr, Pregion, Rv64Reg, Vaddr, Vregion},
     max_free_index,
     object::cte_insert,
     println, round_down,
 };
 
 use super::{
-    activate_kernel_vspace, riscv_get_n_paging, asidLowBits,
+    activate_kernel_vspace, asidLowBits,
     bootinfo::{BootInfo, SlotRegion, UntypedDesc},
     create_it_pt_cap, create_mapped_it_frame_cap, create_unmapped_it_frame_cap,
     heap::init_heap,
-    seL4_CapInitThreadTCB,
+    riscv_get_n_paging, seL4_CapInitThreadTCB,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
     structures::{
         seL4_CapASIDControl, seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl,
         seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
         seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
     },
-    tcbCTable,
-    thread::{TCBInner, IDLE_THREAD_TCB, ThreadState_Running, schedule, activate_thread},
-    CapSlot, IT_ASID, PageTable, tcbVTable,
+    tcbCTable, tcbVTable,
+    thread::{activate_thread, schedule, TCBInner, ThreadState_Running, IDLE_THREAD_TCB},
+    CapSlot, PageTable, IT_ASID,
 };
 
 struct BootState<'a> {
@@ -701,7 +701,8 @@ pub fn init_core_state(scheduler_action: &'static TCBInner) {
 #[link_section = ".boot.text"]
 pub fn bi_finalise() {
     let mut bs = BOOT_STATE.lock();
-    bs.bi_frame.as_mut().unwrap().empty = SlotRegion::new(bs.slot_pos_cur, bit!(CONFIG_ROOT_CNODE_SIZE_BITS));
+    bs.bi_frame.as_mut().unwrap().empty =
+        SlotRegion::new(bs.slot_pos_cur, bit!(CONFIG_ROOT_CNODE_SIZE_BITS));
 }
 
 #[link_section = ".boot.text"]
@@ -774,11 +775,16 @@ fn try_init_kernel(
     if !rootserver.create_untypeds(root_cnode_cap, boot_mem_reuse_reg) {
         panic!("create_untypeds failed");
     }
-    
+
     /* finalise the bootinfo frame */
     bi_finalise();
 
-    BOOT_STATE.lock().bi_frame.as_ref().unwrap().debug_print_info();
+    BOOT_STATE
+        .lock()
+        .bi_frame
+        .as_ref()
+        .unwrap()
+        .debug_print_info();
     root_cnode_cap.debug_print_cnode();
     println!("Booting all finished, dropped to user space");
 }

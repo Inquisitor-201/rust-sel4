@@ -1,4 +1,4 @@
-use core::fmt::{Write, self};
+use core::fmt::{self, Write};
 
 use crate::syscall::sel4_debug_putchar;
 

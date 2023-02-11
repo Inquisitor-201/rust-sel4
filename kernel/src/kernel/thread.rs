@@ -162,8 +162,8 @@ pub fn switch_to_thread(tcb: &'static TCBInner) {
 pub fn activate_thread() {
     let cur_thread = ksCurThread.lock().unwrap();
     match cur_thread.tcb_state.ts_type {
-        ThreadState_Running => {},
+        ThreadState_Running => {}
         ThreadState_Restart => todo!("thread restart"),
-        _ => todo!("activate_thread, type = {}", cur_thread.tcb_state.ts_type)
+        _ => todo!("activate_thread, type = {}", cur_thread.tcb_state.ts_type),
     }
 }

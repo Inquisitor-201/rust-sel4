@@ -1,11 +1,11 @@
 mod io;
-mod sbi;
 mod registerset;
+mod sbi;
 
 use core::fmt::{self, Debug, Formatter};
 pub use io::*;
-pub use sbi::*;
 pub use registerset::*;
+pub use sbi::*;
 
 use crate::{
     common::{seL4_PageBits, PAGE_SIZE},
@@ -115,8 +115,7 @@ impl Debug for Vregion {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "Vregion[{:#x?}..{:#x?})",
-            self.start.0,
-            self.end.0
+            self.start.0, self.end.0
         ))
     }
 }
@@ -125,8 +124,7 @@ impl Debug for Pregion {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "Pregion[{:#x?}..{:#x?})",
-            self.start.0,
-            self.end.0
+            self.start.0, self.end.0
         ))
     }
 }

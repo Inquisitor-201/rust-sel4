@@ -42,8 +42,7 @@ pub enum Rv64Reg {
     Sepc = 34,
 
     /* TODO: add other user-level CSRs if needed (i.e. to avoid channels) */
-
-    n_contextRegisters
+    n_contextRegisters,
 }
 
 pub const SSTATUS_SPIE: usize = 0x00000020;
