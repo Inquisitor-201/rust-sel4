@@ -7,6 +7,6 @@ extern crate apps;
 
 #[no_mangle]
 pub fn main() -> i64 {
-    println!("[user] Hello, world\n");
+    println!("[user] Hello, world!\n");
     return -3;
 }

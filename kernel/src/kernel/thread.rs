@@ -7,7 +7,7 @@ use crate::{
     common::{seL4_MinPrio, seL4_TCBBits, TCB_OFFSET},
     kernel::statedata::ksIdleThread,
     machine::{Paddr, Rv64Reg, SSTATUS_SPIE},
-    println, round_down,
+    round_down,
 };
 
 use super::{
