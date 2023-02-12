@@ -6,6 +6,7 @@ mod structures;
 mod thread;
 mod traps;
 mod vspace;
+mod syscall;
 
 pub use structures::*;
 pub use vspace::*;

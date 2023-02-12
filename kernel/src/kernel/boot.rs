@@ -1,7 +1,7 @@
 use core::cmp::max;
 
 use alloc::vec::Vec;
-use riscv::register::sie;
+use riscv::register::{sie, stvec};
 use spin::{Lazy, Mutex};
 
 use crate::{
@@ -300,6 +300,10 @@ fn riscv_init_freemem(ui_reg: Pregion, it_v_reg: Vregion) -> RootServer {
 #[link_section = ".boot.text"]
 fn init_cpu() {
     activate_kernel_vspace();
+    extern "C" {
+        fn trap_entry();
+    }
+    unsafe {stvec::write(trap_entry as _,  stvec::TrapMode::Direct)};
     init_local_irq_controller();
 }
 
@@ -516,7 +520,7 @@ impl RootServer {
         // todo: cte insert ipc_buf cap
         // todo: set tcbIPCBuffer, tcbMCP, tcbDomain
         tcb_inner.registers[Rv64Reg::a0 as usize] = bi_frame_vptr.0;
-        tcb_inner.registers[Rv64Reg::Sepc as usize] = ui_v_entry.0;
+        tcb_inner.registers[Rv64Reg::NextIP as usize] = ui_v_entry.0;
         tcb_inner.tcb_priority = seL4_MaxPrio;
         tcb_inner.set_thread_state(ThreadState_Running);
         // todo: set Cur_domain
