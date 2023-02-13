@@ -1,4 +1,7 @@
-use sel4_common::{bit, constants::{seL4_PageBits, seL4_TCBBits}};
+use sel4_common::{
+    bit,
+    constants::{seL4_PageBits, seL4_TCBBits},
+};
 
 #[macro_export]
 macro_rules! mask {

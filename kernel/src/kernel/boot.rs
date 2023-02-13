@@ -2,23 +2,31 @@ use core::cmp::max;
 
 use alloc::vec::Vec;
 use riscv::register::{sie, stvec};
-use sel4_common::{bootinfo_common::{BootInfo, SlotRegion, UntypedDesc}, constants::{seL4_VSpaceBits, seL4_SlotBits, seL4_TCBBits, seL4_PageBits, BI_FRAME_SIZE_BITS, seL4_ASIDPoolBits, seL4_PageTableBits, CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS}, bit, round_down};
+use sel4_common::{
+    bit,
+    bootinfo_common::{BootInfo, SlotRegion, UntypedDesc},
+    constants::{
+        seL4_ASIDPoolBits, seL4_PageBits, seL4_PageTableBits, seL4_SlotBits, seL4_TCBBits,
+        seL4_VSpaceBits, BI_FRAME_SIZE_BITS, CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS,
+    },
+    round_down,
+};
 use spin::{Lazy, Mutex};
 
 use crate::{
     common::*,
     drivers::plic_init_hart,
-    get_level_pgsize, is_aligned,
-    kernel::{map_kernel_window, thread::TCB, bootinfo::debug_print_bi_info},
+    get_level_pgbits, get_level_pgsize, is_aligned,
+    kernel::{bootinfo::debug_print_bi_info, map_kernel_window, thread::TCB},
     machine::{clear_memory, Paddr, Pregion, Rv64Reg, Vaddr, Vregion},
     max_free_index,
     object::cte_insert,
-    println, get_level_pgbits,
+    println,
 };
 
 use super::{
-    activate_kernel_vspace, asidLowBits,
-    create_it_pt_cap, create_mapped_it_frame_cap, create_unmapped_it_frame_cap,
+    activate_kernel_vspace, asidLowBits, create_it_pt_cap, create_mapped_it_frame_cap,
+    create_unmapped_it_frame_cap,
     heap::init_heap,
     riscv_get_n_paging, seL4_CapInitThreadTCB,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
@@ -782,11 +790,7 @@ fn try_init_kernel(
     /* finalise the bootinfo frame */
     bi_finalise();
 
-    debug_print_bi_info(BOOT_STATE
-        .lock()
-        .bi_frame
-        .as_ref()
-        .unwrap());
+    debug_print_bi_info(BOOT_STATE.lock().bi_frame.as_ref().unwrap());
     root_cnode_cap.debug_print_cnode();
     println!("Booting all finished, dropped to user space");
 }

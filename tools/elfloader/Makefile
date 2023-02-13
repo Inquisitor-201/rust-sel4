@@ -108,4 +108,9 @@ monitor:
 
 # -ex 'add-symbol-file ../user/libc-tests/entry-static.exe'\
 
+fmt:
+	cargo fmt && cd ../ && \
+	cd ../apps && cargo fmt && \
+	cd ../kernel && cargo fmt
+
 .PHONY: env image gdb monitor clean run

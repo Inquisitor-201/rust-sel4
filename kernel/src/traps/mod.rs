@@ -1,13 +1,12 @@
-mod syscalls;
+mod basic_syscalls;
 mod exceptions;
 mod interrupts;
-mod basic_syscalls;
+mod syscalls;
 mod unknown_syscalls;
 
 use core::arch::global_asm;
 
 use crate::kernel::ksCurThread;
-
 
 global_asm!(include_str!("trap.S"));
 

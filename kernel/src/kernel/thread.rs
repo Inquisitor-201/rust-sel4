@@ -1,6 +1,6 @@
 use core::{mem::size_of, ptr};
 
-use sel4_common::{round_down, constants::seL4_TCBBits, bit};
+use sel4_common::{bit, constants::seL4_TCBBits, round_down};
 use spin::{mutex::Mutex, Lazy};
 
 use crate::{

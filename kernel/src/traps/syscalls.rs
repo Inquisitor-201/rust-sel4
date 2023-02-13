@@ -1,6 +1,9 @@
 use crate::println;
 
-use super::{basic_syscalls::handle_basic_syscall, unknown_syscalls::handle_unknown_syscall, restore_user_context};
+use super::{
+    basic_syscalls::handle_basic_syscall, restore_user_context,
+    unknown_syscalls::handle_unknown_syscall,
+};
 
 pub const BASIC_SYSCALL_MIN: isize = -8;
 pub const BASIC_SYSCALL_MAX: isize = -1;
@@ -19,4 +22,3 @@ pub fn slowpath(cptr: usize, msg_info: usize, syscall: usize) {
         handle_unknown_syscall(cptr, msg_info, syscall);
     }
 }
-

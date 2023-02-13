@@ -1,5 +1,5 @@
-use sel4_common::bootinfo_common::BootInfo;
 use crate::println;
+use sel4_common::bootinfo_common::BootInfo;
 
 pub fn debug_print_bi_info(bootinfo: &BootInfo) {
     println!("\n****** bootinfo ******");

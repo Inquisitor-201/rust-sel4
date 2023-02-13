@@ -6,6 +6,6 @@ mod structures;
 mod thread;
 mod vspace;
 
+pub use statedata::*;
 pub use structures::*;
 pub use vspace::*;
-pub use statedata::*;
