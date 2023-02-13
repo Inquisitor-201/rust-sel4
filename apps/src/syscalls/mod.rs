@@ -1,4 +1,5 @@
 mod syscall_ids;
+mod cap_ops;
 
 use core::arch::asm;
 
