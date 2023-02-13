@@ -3,15 +3,16 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
 
-use runtime::{BootInfo, Env};
+use runtime::{BootInfo, Env, ENV};
 
 // extern crate alloc;
 
 mod lang_items;
 pub mod runtime;
-pub mod syscall;
+pub mod syscalls;
+pub mod common;
 // use buddy_system_allocator::LockedHeap;
 
 // const USER_HEAP_SIZE: usize = 32768;
@@ -28,14 +29,13 @@ pub mod syscall;
 
 #[no_mangle]
 pub fn sel4runtime_start_main(bootinfo: *const BootInfo) -> i64 {
-    let env = Env::new(bootinfo);
-    main()
-}
-
-#[linkage = "weak"]
-#[no_mangle]
-fn main() -> i64 {
-    panic!("Cannot find main!");
+    *(ENV.lock()) = Some(Env::new(bootinfo));
+    let mut ret;
+    unsafe {
+        asm!("jal main", 
+        out("x10") ret);
+    }
+    ret
 }
 
 global_asm!(include_str!("sel4_crt0.S"));

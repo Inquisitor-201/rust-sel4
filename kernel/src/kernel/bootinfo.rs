@@ -44,6 +44,7 @@ pub struct BootInfo {
     pub num_io_pt_levels: usize,
     pub ipc_buffer: Vaddr,
     pub empty: SlotRegion,
+    pub it_cnode_size_bits: usize,
     pub untyped: SlotRegion,
     pub untyped_list: [UntypedDesc; CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS],
 }

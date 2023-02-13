@@ -1,6 +1,6 @@
 use core::fmt::{self, Write};
 
-use crate::syscall::sel4_debug_putchar;
+use crate::syscalls::sel4_debug_putchar;
 
 struct Stdout;
 

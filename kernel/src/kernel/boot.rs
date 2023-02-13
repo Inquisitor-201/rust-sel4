@@ -414,7 +414,7 @@ impl RootServer {
         bi.num_nodes = num_nodes;
         bi.num_io_pt_levels = 0;
         bi.ipc_buffer = ipcbuf_vptr;
-        // bi->initThreadCNodeSizeBits = CONFIG_ROOT_CNODE_SIZE_BITS;
+        bi.it_cnode_size_bits = CONFIG_ROOT_CNODE_SIZE_BITS;
         // bi->initThreadDomain = ksDomSchedule[ksDomScheduleIdx].domain;
         bi.extra_len = extra_bi_size;
 
