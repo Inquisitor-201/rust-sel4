@@ -1,7 +1,8 @@
 #![no_std]
 #![no_main]
 
-use apps::{println, runtime::{get_env, get_bootinfo}, bit, common::seL4_SlotBits};
+use apps::{runtime::get_bootinfo, println};
+use sel4_common::{bit, constants::seL4_SlotBits};
 
 extern crate apps;
 

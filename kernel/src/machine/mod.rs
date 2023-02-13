@@ -6,9 +6,10 @@ use core::fmt::{self, Debug, Formatter};
 pub use io::*;
 pub use registerset::*;
 pub use sbi::*;
+use sel4_common::constants::seL4_PageBits;
 
 use crate::{
-    common::{seL4_PageBits, PAGE_SIZE},
+    common::PAGE_SIZE,
     is_aligned,
     kernel::PTE,
     mask,
@@ -132,14 +133,14 @@ impl Debug for Pregion {
 #[macro_export]
 macro_rules! get_level_pgbits {
     ($lvl: expr) => {
-        $crate::common::PT_INDEX_BITS * (2 - $lvl) + $crate::common::seL4_PageBits
+        $crate::common::PT_INDEX_BITS * (2 - $lvl) + seL4_PageBits
     };
 }
 
 #[macro_export]
 macro_rules! get_level_pgsize {
     ($lvl: expr) => {
-        $crate::bit!($crate::get_level_pgbits!($lvl))
+        1 << $crate::get_level_pgbits!($lvl)
     };
 }
 

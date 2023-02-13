@@ -3,7 +3,6 @@ mod exceptions;
 mod interrupts;
 mod basic_syscalls;
 mod unknown_syscalls;
-mod syscall_ids;
 
 use core::arch::global_asm;
 

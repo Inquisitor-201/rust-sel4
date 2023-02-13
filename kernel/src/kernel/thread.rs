@@ -1,13 +1,12 @@
 use core::{mem::size_of, ptr};
 
+use sel4_common::{round_down, constants::seL4_TCBBits, bit};
 use spin::{mutex::Mutex, Lazy};
 
 use crate::{
-    bit,
-    common::{seL4_MinPrio, seL4_TCBBits, TCB_OFFSET},
+    common::{seL4_MinPrio, TCB_OFFSET},
     kernel::statedata::ksIdleThread,
     machine::{Paddr, Rv64Reg, SSTATUS_SPIE},
-    round_down,
 };
 
 use super::{

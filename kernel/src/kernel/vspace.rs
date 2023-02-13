@@ -1,13 +1,13 @@
 use core::arch::asm;
 
 use crate::{
-    bit,
-    common::{seL4_PageBits, KERNEL_ELF_BASE, PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS},
+    common::{PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS, KERNEL_ELF_BASE},
     get_level_pgbits,
     machine::{Paddr, Vaddr, Vregion},
-    mask, round_down, round_up,
+    mask
 };
 use riscv::register::satp;
+use sel4_common::{constants::seL4_PageBits, round_down, round_up, bit};
 use spin::{Lazy, Mutex};
 
 use super::{

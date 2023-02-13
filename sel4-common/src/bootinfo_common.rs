@@ -1,4 +1,5 @@
-use super::CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS;
+use crate::{constants::CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS, bit};
+use core::fmt::{Debug, Formatter, self};
 
 #[repr(C)]
 pub struct BootInfo {
@@ -26,4 +27,26 @@ pub struct UntypedDesc {
 pub struct SlotRegion {
     pub start: usize, /* first CNode slot position OF region */
     pub end: usize,   /* first CNode slot position AFTER region */
+}
+
+impl SlotRegion {
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+}
+
+impl Debug for UntypedDesc {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "UntypedDesc {{ PA range: [{:#x?}..{:#x?}), size_bits: {}, is_device: {} }}",
+            self.paddr,
+            self.paddr + bit!(self.size_bits),
+            self.size_bits,
+            self.is_device != 0
+        ))
+    }
+}
+
+impl BootInfo {
+
 }

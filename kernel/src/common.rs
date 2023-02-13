@@ -1,28 +1,9 @@
-#[macro_export]
-macro_rules! round_up {
-    ($n: expr, $b: expr) => {
-        ((($n - 1) >> $b) + 1) << $b
-    };
-}
-
-#[macro_export]
-macro_rules! round_down {
-    ($n: expr, $b: expr) => {
-        ($n >> $b) << $b
-    };
-}
-
-#[macro_export]
-macro_rules! bit {
-    ($b: expr) => {
-        1 << $b
-    };
-}
+use sel4_common::{bit, constants::{seL4_PageBits, seL4_TCBBits}};
 
 #[macro_export]
 macro_rules! mask {
     ($b: expr) => {
-        $crate::bit!($b) - 1
+        (1 << $b) - 1
     };
 }
 
@@ -46,13 +27,6 @@ pub const AVAIL_REGION_START: usize = 0x80200000;
 pub const AVAIL_REGION_END: usize = 0x90000000;
 
 pub const CONFIG_ROOT_CNODE_SIZE_BITS: usize = 13;
-pub const seL4_PageBits: usize = 12;
-pub const seL4_SlotBits: usize = 5;
-pub const seL4_TCBBits: usize = 10;
-pub const seL4_ASIDPoolBits: usize = 12;
-pub const seL4_VSpaceBits: usize = 12;
-pub const seL4_PageTableBits: usize = 12;
-pub const BI_FRAME_SIZE_BITS: usize = seL4_PageBits;
 
 pub const seL4_MinUntypedBits: usize = 4;
 pub const seL4_MaxUntypedBits: usize = 38;
@@ -63,8 +37,6 @@ pub const PT_INDEX_BITS: usize = 9;
 
 pub const TCB_SIZE_BITS: usize = seL4_TCBBits - 1;
 pub const TCB_OFFSET: usize = bit!(TCB_SIZE_BITS);
-
-pub const CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS: usize = 230;
 
 // threads
 pub const CONFIG_NUM_PRIORITIES: usize = 256;

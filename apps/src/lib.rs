@@ -5,14 +5,14 @@
 
 use core::arch::{asm, global_asm};
 
-use runtime::{BootInfo, Env, ENV};
+use runtime::{Env, ENV};
+use sel4_common::bootinfo_common::BootInfo;
 
 // extern crate alloc;
 
 mod lang_items;
 pub mod runtime;
 pub mod syscalls;
-pub mod common;
 // use buddy_system_allocator::LockedHeap;
 
 // const USER_HEAP_SIZE: usize = 32768;

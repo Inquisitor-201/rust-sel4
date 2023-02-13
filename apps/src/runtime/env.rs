@@ -1,6 +1,7 @@
+use sel4_common::bootinfo_common::BootInfo;
 use spin::{Lazy, Mutex};
 
-use super::{structures::seL4_CapInitThreadTCB, BootInfo};
+use super::structures::seL4_CapInitThreadTCB;
 pub struct Env {
     bootinfo: usize,
     it_ipc_buffer: usize,

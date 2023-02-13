@@ -18,11 +18,3 @@ macro_rules! bit {
         1 << $b
     };
 }
-
-pub const seL4_PageBits: usize = 12;
-pub const seL4_SlotBits: usize = 5;
-pub const seL4_TCBBits: usize = 10;
-pub const seL4_ASIDPoolBits: usize = 12;
-pub const seL4_VSpaceBits: usize = 12;
-pub const seL4_PageTableBits: usize = 12;
-pub const BI_FRAME_SIZE_BITS: usize = seL4_PageBits;

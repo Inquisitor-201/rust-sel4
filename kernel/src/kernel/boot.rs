@@ -2,23 +2,22 @@ use core::cmp::max;
 
 use alloc::vec::Vec;
 use riscv::register::{sie, stvec};
+use sel4_common::{bootinfo_common::{BootInfo, SlotRegion, UntypedDesc}, constants::{seL4_VSpaceBits, seL4_SlotBits, seL4_TCBBits, seL4_PageBits, BI_FRAME_SIZE_BITS, seL4_ASIDPoolBits, seL4_PageTableBits, CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS}, bit, round_down};
 use spin::{Lazy, Mutex};
 
 use crate::{
-    bit,
     common::*,
     drivers::plic_init_hart,
-    get_level_pgbits, get_level_pgsize, is_aligned,
-    kernel::{map_kernel_window, thread::TCB, PTE},
+    get_level_pgsize, is_aligned,
+    kernel::{map_kernel_window, thread::TCB, bootinfo::debug_print_bi_info},
     machine::{clear_memory, Paddr, Pregion, Rv64Reg, Vaddr, Vregion},
     max_free_index,
     object::cte_insert,
-    println, round_down,
+    println, get_level_pgbits,
 };
 
 use super::{
     activate_kernel_vspace, asidLowBits,
-    bootinfo::{BootInfo, SlotRegion, UntypedDesc},
     create_it_pt_cap, create_mapped_it_frame_cap, create_unmapped_it_frame_cap,
     heap::init_heap,
     riscv_get_n_paging, seL4_CapInitThreadTCB,
@@ -303,7 +302,7 @@ fn init_cpu() {
     extern "C" {
         fn trap_entry();
     }
-    unsafe {stvec::write(trap_entry as _,  stvec::TrapMode::Direct)};
+    unsafe { stvec::write(trap_entry as _, stvec::TrapMode::Direct) };
     init_local_irq_controller();
 }
 
@@ -413,7 +412,7 @@ impl RootServer {
         bi.node_id = node_id;
         bi.num_nodes = num_nodes;
         bi.num_io_pt_levels = 0;
-        bi.ipc_buffer = ipcbuf_vptr;
+        bi.ipc_buffer = ipcbuf_vptr.0;
         bi.it_cnode_size_bits = CONFIG_ROOT_CNODE_SIZE_BITS;
         // bi->initThreadDomain = ksDomSchedule[ksDomScheduleIdx].domain;
         bi.extra_len = extra_bi_size;
@@ -783,12 +782,11 @@ fn try_init_kernel(
     /* finalise the bootinfo frame */
     bi_finalise();
 
-    BOOT_STATE
+    debug_print_bi_info(BOOT_STATE
         .lock()
         .bi_frame
         .as_ref()
-        .unwrap()
-        .debug_print_info();
+        .unwrap());
     root_cnode_cap.debug_print_cnode();
     println!("Booting all finished, dropped to user space");
 }

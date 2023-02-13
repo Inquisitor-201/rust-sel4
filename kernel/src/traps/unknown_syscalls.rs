@@ -1,6 +1,5 @@
 use crate::machine::console_putchar;
-
-use super::syscall_ids::seL4_SysDebugPutChar;
+use sel4_common::syscall_ids::*;
 
 pub fn handle_unknown_syscall(cptr: usize, msg_info: usize, syscall: usize) {
     match syscall {
