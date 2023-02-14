@@ -1,17 +1,18 @@
+// capability types
 pub const CAP_NULL_CAP: usize = 0;
 pub const CAP_FRAME_CAP: usize = 1;
 pub const CAP_UNTYPED_CAP: usize = 2;
 pub const CAP_PAGE_TABLE_CAP: usize = 3;
-pub const cap_endpoint_cap: usize = 4;
-pub const cap_notification_cap: usize = 6;
-pub const cap_reply_cap: usize = 8;
+pub const CAP_ENDPOINT_CAP: usize = 4;
+pub const CAP_NOTIFICATION_CAP: usize = 6;
+pub const CAP_REPLY_CAP: usize = 8;
 pub const CAP_CNODE_CAP: usize = 10;
 pub const CAP_ASID_CONTROL_CAP: usize = 11;
 pub const CAP_THREAD_CAP: usize = 12;
 pub const CAP_ASID_POOL_CAP: usize = 13;
 pub const CAP_IRQ_CONTROL_CAP: usize = 14;
-pub const cap_irq_handler_cap: usize = 16;
-pub const cap_zombie_cap: usize = 18;
+pub const CAP_IRQ_HANDLER_CAP: usize = 16;
+pub const CAP_ZOMBIE_CAP: usize = 18;
 pub const CAP_DOMAIN_CAP: usize = 20;
 
 // rootserver's cslot indexes

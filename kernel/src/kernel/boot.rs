@@ -9,7 +9,7 @@ use sel4_common::{
         seL4_ASIDPoolBits, seL4_PageBits, seL4_PageTableBits, seL4_SlotBits, seL4_TCBBits,
         seL4_VSpaceBits, BI_FRAME_SIZE_BITS, CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS,
     },
-    round_down,
+    round_down, structures_common::{seL4_CapInitThreadCNode, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, seL4_CapBootInfoFrame, seL4_CapInitThreadIPCBuffer, seL4_CapInitThreadASIDPool, seL4_CapASIDControl, tcbCTable, tcbVTable, seL4_CapInitThreadTCB, seL4_CapDomain, seL4_CapIRQControl},
 };
 use spin::{Lazy, Mutex};
 
@@ -28,16 +28,10 @@ use super::{
     activate_kernel_vspace, asidLowBits, create_it_pt_cap, create_mapped_it_frame_cap,
     create_unmapped_it_frame_cap,
     heap::init_heap,
-    riscv_get_n_paging, seL4_CapInitThreadTCB,
+    riscv_get_n_paging,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
-    structures::{
-        seL4_CapASIDControl, seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl,
-        seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
-        seL4_CapInitThreadVSpace, seL4_NumInitialCaps, Capability,
-    },
-    tcbCTable, tcbVTable,
     thread::{activate_thread, schedule, TCBInner, ThreadState_Running, IDLE_THREAD_TCB},
-    CapSlot, PageTable, IT_ASID,
+    CapSlot, PageTable, IT_ASID, Capability,
 };
 
 struct BootState<'a> {
