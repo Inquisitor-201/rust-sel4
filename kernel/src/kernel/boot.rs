@@ -9,7 +9,12 @@ use sel4_common::{
         seL4_ASIDPoolBits, seL4_PageBits, seL4_PageTableBits, seL4_SlotBits, seL4_TCBBits,
         seL4_VSpaceBits, BI_FRAME_SIZE_BITS, CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS,
     },
-    round_down, structures_common::{seL4_CapInitThreadCNode, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, seL4_CapBootInfoFrame, seL4_CapInitThreadIPCBuffer, seL4_CapInitThreadASIDPool, seL4_CapASIDControl, tcbCTable, tcbVTable, seL4_CapInitThreadTCB, seL4_CapDomain, seL4_CapIRQControl},
+    round_down,
+    structures_common::{
+        seL4_CapASIDControl, seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl,
+        seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
+        seL4_CapInitThreadTCB, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, tcbCTable, tcbVTable,
+    },
 };
 use spin::{Lazy, Mutex};
 
@@ -31,7 +36,7 @@ use super::{
     riscv_get_n_paging,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
     thread::{activate_thread, schedule, TCBInner, ThreadState_Running, IDLE_THREAD_TCB},
-    CapSlot, PageTable, IT_ASID, Capability,
+    CapSlot, Capability, PageTable, IT_ASID,
 };
 
 struct BootState<'a> {

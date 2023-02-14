@@ -7,7 +7,9 @@ use crate::{
     mask,
 };
 use riscv::register::satp;
-use sel4_common::{bit, constants::seL4_PageBits, round_down, round_up, structures_common::tcbVTable};
+use sel4_common::{
+    bit, constants::seL4_PageBits, round_down, round_up, structures_common::tcbVTable,
+};
 use spin::{Lazy, Mutex};
 
 use super::{

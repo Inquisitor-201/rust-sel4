@@ -1,6 +1,9 @@
 use core::arch::asm;
 
-use sel4_common::{shared_types::MessageInfo, syscall_ids::{seL4_SysDebugPutChar, seL4_SysCall}};
+use sel4_common::{
+    shared_types::MessageInfo,
+    syscall_ids::{seL4_SysCall, seL4_SysDebugPutChar},
+};
 
 fn syscall(
     id: usize,
@@ -26,7 +29,14 @@ fn syscall(
             in("x17") id
         );
     }
-    (ret, MessageInfo(out_msginfo), out_mr0, out_mr1, out_mr2, out_mr3)
+    (
+        ret,
+        MessageInfo(out_msginfo),
+        out_mr0,
+        out_mr1,
+        out_mr2,
+        out_mr3,
+    )
 }
 
 pub fn sys_send_recv(
@@ -37,7 +47,7 @@ pub fn sys_send_recv(
     mr1: &mut usize,
     mr2: &mut usize,
     mr3: &mut usize,
-    out_info: &mut MessageInfo
+    out_info: &mut MessageInfo,
 ) {
     let r = syscall(
         sys, dest, info_arg, *mr0 as _, *mr1 as _, *mr2 as _, *mr3 as _,
