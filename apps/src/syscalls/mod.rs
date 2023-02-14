@@ -1,9 +1,6 @@
-mod cap_ops;
-mod syscall_ids;
-
 use core::arch::asm;
 
-use self::syscall_ids::seL4_SysDebugPutChar;
+use sel4_common::{shared_types::MessageInfo, syscall_ids::{seL4_SysDebugPutChar, seL4_SysCall}};
 
 fn syscall(
     id: usize,
@@ -13,14 +10,15 @@ fn syscall(
     a3: usize,
     a4: usize,
     a5: usize,
-) -> (usize, usize, usize, usize, usize) {
+) -> (usize, MessageInfo, usize, usize, usize, usize) {
     let mut ret: usize;
+    let mut out_msginfo: usize;
     let (mut out_mr0, mut out_mr1, mut out_mr2, mut out_mr3): (usize, usize, usize, usize);
     unsafe {
         asm!(
             "ecall",
             inlateout("x10") a0 => ret,
-            in("x11") a1,
+            inlateout("x11") a1 => out_msginfo,
             inlateout("x12") a2 => out_mr0,
             inlateout("x13") a3 => out_mr1,
             inlateout("x14") a4 => out_mr2,
@@ -28,7 +26,7 @@ fn syscall(
             in("x17") id
         );
     }
-    (ret, out_mr0, out_mr1, out_mr2, out_mr3)
+    (ret, MessageInfo(out_msginfo), out_mr0, out_mr1, out_mr2, out_mr3)
 }
 
 pub fn sys_send_recv(
@@ -39,29 +37,27 @@ pub fn sys_send_recv(
     mr1: &mut usize,
     mr2: &mut usize,
     mr3: &mut usize,
+    out_info: &mut MessageInfo
 ) {
     let r = syscall(
         sys, dest, info_arg, *mr0 as _, *mr1 as _, *mr2 as _, *mr3 as _,
     );
-    *mr0 = r.1;
-    *mr1 = r.2;
-    *mr2 = r.3;
-    *mr3 = r.4;
+    *mr0 = r.2;
+    *mr1 = r.3;
+    *mr2 = r.4;
+    *mr3 = r.5;
+    *out_info = r.1;
 }
 
-pub fn sel4_debug_putchar(c: char) {
-    let mut unused0: usize = 0;
-    let mut unused1: usize = 0;
-    let mut unused2: usize = 0;
-    let mut unused3: usize = 0;
-
-    sys_send_recv(
-        seL4_SysDebugPutChar,
-        c as _,
-        0,
-        &mut unused0,
-        &mut unused1,
-        &mut unused2,
-        &mut unused3,
-    );
+pub fn call_with_mrs(
+    _service: usize,
+    tag: MessageInfo,
+    mr0: &mut usize,
+    mr1: &mut usize,
+    mr2: &mut usize,
+    mr3: &mut usize,
+) -> MessageInfo {
+    let mut info = MessageInfo(0);
+    sys_send_recv(seL4_SysCall, _service, tag.0, mr0, mr1, mr2, mr3, &mut info);
+    info
 }

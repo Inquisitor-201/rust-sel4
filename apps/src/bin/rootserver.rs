@@ -1,8 +1,8 @@
 #![no_std]
 #![no_main]
 
-use apps::{println, runtime::get_bootinfo};
-use sel4_common::{bit, constants::seL4_SlotBits};
+use apps::{println, runtime::{get_bootinfo, functions::sel4_cnode_copy}};
+use sel4_common::{bit, constants::seL4_SlotBits, structures_common::{seL4_CapInitThreadCNode, seL4_CapInitThreadTCB, seL4_AllRights}};
 
 extern crate apps;
 
@@ -22,8 +22,8 @@ pub fn main() -> i64 {
     );
 
     let first_free_slot = info.empty.start;
-    // seL4_Error error = seL4_CNode_Copy(seL4_CapInitThreadCNode, first_free_slot, seL4_WordBits,
-    //                                    seL4_CapInitThreadCNode, seL4_CapInitThreadTCB, seL4_WordBits,
-    //                                    seL4_AllRights);
-    0
+    let error = sel4_cnode_copy(seL4_CapInitThreadCNode, first_free_slot, usize::BITS as _,
+                                       seL4_CapInitThreadCNode, seL4_CapInitThreadTCB, usize::BITS as _,
+                                       seL4_AllRights);
+    error as _
 }

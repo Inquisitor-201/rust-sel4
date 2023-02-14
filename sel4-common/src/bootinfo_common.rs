@@ -47,6 +47,3 @@ impl Debug for UntypedDesc {
     }
 }
 
-impl BootInfo {
-
-}

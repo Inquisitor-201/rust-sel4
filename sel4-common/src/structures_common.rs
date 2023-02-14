@@ -37,3 +37,5 @@ pub const tcbVTable: usize = 1; /* VSpace root */
 pub const tcbReply: usize = 2; /* Reply cap slot */
 pub const tcbCaller: usize = 3; /* TCB of most recent IPC sender */
 pub const tcbBuffer: usize = 4; /* IPC buffer cap slot */
+
+pub const seL4_AllRights: usize = 0xf;
