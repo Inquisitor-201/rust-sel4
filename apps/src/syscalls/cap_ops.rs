@@ -1,3 +1,5 @@
+use sel4_common::{invocation::Invocation, shared_types::MessageInfo};
+
 pub fn sel4_cnode_copy(
     _service: usize,
     dest_index: usize,
@@ -8,15 +10,14 @@ pub fn sel4_cnode_copy(
     rights: usize,
 ) {
     // 	seL4_Error result;
-    // 	seL4_MessageInfo_t tag = seL4_MessageInfo_new(CNodeCopy, 0, 1, 5);
-    // 	seL4_MessageInfo_t output_tag;
-    // 	seL4_Word mr0;
-    // 	seL4_Word mr1;
-    // 	seL4_Word mr2;
-    // 	seL4_Word mr3;
+    let tag = MessageInfo::new(Invocation::CNodeCopy, 0, 1, 5);
+    let mut mr0: usize;
+    let mut mr1: usize;
+    let mut mr2: usize;
+    let mut mr3: usize;
 
     // 	/* Setup input capabilities. */
-    // 	seL4_SetCap(0, src_root);
+    ipc_setcap(0, src_root);
 
     // 	/* Marshal and initialise parameters. */
     // 	mr0 = dest_index;

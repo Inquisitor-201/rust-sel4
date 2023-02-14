@@ -1,5 +1,3 @@
-use crate::println;
-
 use super::{
     basic_syscalls::handle_basic_syscall, restore_user_context,
     unknown_syscalls::handle_unknown_syscall,
