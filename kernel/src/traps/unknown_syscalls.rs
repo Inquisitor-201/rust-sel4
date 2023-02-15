@@ -1,5 +1,6 @@
-use crate::machine::console_putchar;
 use sel4_common::syscall_ids::*;
+
+use crate::machine::sbi::console_putchar;
 
 pub fn handle_unknown_syscall(cptr: usize, msg_info: usize, syscall: usize) {
     match syscall {

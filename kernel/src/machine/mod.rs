@@ -1,14 +1,11 @@
-mod io;
-mod registerset;
-mod sbi;
+pub mod io;
+pub mod registerset;
+pub mod sbi;
 
 use core::fmt::{self, Debug, Formatter};
-pub use io::*;
-pub use registerset::*;
-pub use sbi::*;
 use sel4_common::constants::seL4_PageBits;
 
-use crate::{common::PAGE_SIZE, is_aligned, kernel::PTE, mask};
+use crate::{common::PAGE_SIZE, is_aligned, kernel::vspace::PTE, mask};
 
 #[repr(C)]
 #[derive(Clone, Copy)]

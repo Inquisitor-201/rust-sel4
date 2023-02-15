@@ -1,4 +1,4 @@
-use crate::kernel::{CapInfo, CapSlot, Capability};
+use crate::kernel::structures::*;
 
 pub fn cte_insert(new_cap: Capability, src_slot: &CapSlot, dest_slot: &mut CapSlot) {
     match dest_slot.cap.get_info() {

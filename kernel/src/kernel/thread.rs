@@ -6,13 +6,16 @@ use spin::{mutex::Mutex, Lazy};
 use crate::{
     common::{seL4_MinPrio, TCB_OFFSET},
     kernel::statedata::ksIdleThread,
-    machine::{Paddr, Rv64Reg, SSTATUS_SPIE},
+    machine::{
+        registerset::{Rv64Reg, SSTATUS_SPIE},
+        Paddr,
+    },
 };
 
 use super::{
-    set_vm_root,
     statedata::{ksCurThread, ksSchedulerAction, SchedulerAction},
-    CapSlot,
+    structures::CapSlot,
+    vspace::set_vm_root,
 };
 
 pub const ThreadState_Inactive: u8 = 0;

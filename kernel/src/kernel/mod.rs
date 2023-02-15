@@ -1,11 +1,8 @@
 mod boot;
 mod bootinfo;
+pub mod cspace;
 mod heap;
-mod statedata;
-mod structures;
-mod thread;
-mod vspace;
-
-pub use statedata::*;
-pub use structures::*;
-pub use vspace::*;
+pub mod statedata;
+pub mod structures;
+pub mod thread;
+pub mod vspace;

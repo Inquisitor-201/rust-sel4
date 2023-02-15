@@ -15,7 +15,7 @@ pub fn handle_syscall(cptr: usize, msg_info: usize, syscall: usize) -> ! {
 
 pub fn slowpath(cptr: usize, msg_info: usize, syscall: usize) {
     if syscall as isize >= BASIC_SYSCALL_MIN && syscall as isize <= BASIC_SYSCALL_MAX {
-        handle_basic_syscall(syscall);
+        handle_basic_syscall(cptr, msg_info, syscall);
     } else {
         handle_unknown_syscall(cptr, msg_info, syscall);
     }

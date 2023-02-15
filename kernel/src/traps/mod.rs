@@ -6,7 +6,7 @@ mod unknown_syscalls;
 
 use core::arch::global_asm;
 
-use crate::kernel::ksCurThread;
+use crate::kernel::statedata::ksCurThread;
 
 global_asm!(include_str!("trap.S"));
 

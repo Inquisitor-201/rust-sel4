@@ -1,5 +1,6 @@
-use super::console_putchar;
 use core::fmt::{self, Write};
+
+use super::sbi::console_putchar;
 
 struct Stdout;
 
@@ -29,6 +30,6 @@ macro_rules! println {
         $crate::print!("\n")
     };
     ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::machine::console_print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?))
+        $crate::machine::io::console_print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?))
     }
 }

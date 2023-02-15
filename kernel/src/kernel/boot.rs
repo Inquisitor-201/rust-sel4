@@ -10,11 +10,7 @@ use sel4_common::{
         seL4_VSpaceBits, BI_FRAME_SIZE_BITS, CONFIG_MAX_NUM_BOOTINFO_UNTYPED_CAPS,
     },
     round_down,
-    structures_common::{
-        seL4_CapASIDControl, seL4_CapBootInfoFrame, seL4_CapDomain, seL4_CapIRQControl,
-        seL4_CapInitThreadASIDPool, seL4_CapInitThreadCNode, seL4_CapInitThreadIPCBuffer,
-        seL4_CapInitThreadTCB, seL4_CapInitThreadVSpace, seL4_NumInitialCaps, tcbCTable, tcbVTable,
-    },
+    structures_common::*,
 };
 use spin::{Lazy, Mutex};
 
@@ -22,21 +18,19 @@ use crate::{
     common::*,
     drivers::plic_init_hart,
     get_level_pgbits, get_level_pgsize, is_aligned,
-    kernel::{bootinfo::debug_print_bi_info, map_kernel_window, thread::TCB},
-    machine::{clear_memory, Paddr, Pregion, Rv64Reg, Vaddr, Vregion},
+    kernel::{bootinfo::debug_print_bi_info, thread::TCB},
+    machine::{clear_memory, registerset::Rv64Reg, Paddr, Pregion, Vaddr, Vregion},
     max_free_index,
-    object::cte_insert,
+    object::cnode::cte_insert,
     println,
 };
 
 use super::{
-    activate_kernel_vspace, asidLowBits, create_it_pt_cap, create_mapped_it_frame_cap,
-    create_unmapped_it_frame_cap,
     heap::init_heap,
-    riscv_get_n_paging,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
+    structures::{CapSlot, Capability},
     thread::{activate_thread, schedule, TCBInner, ThreadState_Running, IDLE_THREAD_TCB},
-    CapSlot, Capability, PageTable, IT_ASID,
+    vspace::*,
 };
 
 struct BootState<'a> {
