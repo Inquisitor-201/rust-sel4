@@ -46,3 +46,6 @@ pub enum Rv64Reg {
 }
 
 pub const SSTATUS_SPIE: usize = 0x00000020;
+pub const n_msgRegisters: usize = 4;
+pub const msg_registers: [Rv64Reg; n_msgRegisters] =
+    [Rv64Reg::a2, Rv64Reg::a3, Rv64Reg::a4, Rv64Reg::a5];

@@ -2,7 +2,7 @@ use core::arch::asm;
 
 use sel4_common::{
     shared_types::MessageInfo,
-    syscall_ids::{seL4_SysCall, seL4_SysDebugPutChar},
+    syscall_ids::seL4_SysCall,
 };
 
 fn syscall(

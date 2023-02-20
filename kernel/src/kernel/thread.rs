@@ -8,7 +8,7 @@ use crate::{
     kernel::statedata::ksIdleThread,
     machine::{
         registerset::{Rv64Reg, SSTATUS_SPIE},
-        Paddr,
+        Paddr, Vaddr,
     },
 };
 
@@ -38,6 +38,7 @@ pub struct TCBInner {
     pub registers: [usize; Rv64Reg::n_contextRegisters as _],
     pub tcb_state: ThreadState,
     pub tcb_priority: usize,
+    pub tcb_ipc_buffer: Vaddr
 }
 
 impl TCBInner {
@@ -48,6 +49,7 @@ impl TCBInner {
                 ts_type: ThreadState_Inactive,
             },
             tcb_priority: seL4_MinPrio,
+            tcb_ipc_buffer: Vaddr(0)
         }
     }
 

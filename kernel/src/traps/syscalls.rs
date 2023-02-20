@@ -1,3 +1,7 @@
+use sel4_common::shared_types::IPCBuffer;
+
+use crate::machine::registerset::n_msgRegisters;
+
 use super::{
     basic_syscalls::handle_basic_syscall, restore_user_context,
     unknown_syscalls::handle_unknown_syscall,
@@ -19,4 +23,13 @@ pub fn slowpath(cptr: usize, msg_info: usize, syscall: usize) {
     } else {
         handle_unknown_syscall(cptr, msg_info, syscall);
     }
+}
+
+pub struct SyscallError {}
+
+pub fn get_syscall_arg(i: usize, ipc_buffer: &mut IPCBuffer) -> usize {
+    if i < n_msgRegisters {
+        todo!()
+    }
+    ipc_buffer.msg[i]
 }

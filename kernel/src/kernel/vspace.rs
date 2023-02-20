@@ -4,11 +4,11 @@ use crate::{
     common::{KERNEL_ELF_BASE, PAGE_PTES, PAGE_SIZE, PTE_FLAG_BITS, PT_INDEX_BITS},
     get_level_pgbits,
     machine::{Paddr, Vaddr, Vregion},
-    mask,
+    mask, println,
 };
 use riscv::register::satp;
 use sel4_common::{
-    bit, constants::seL4_PageBits, round_down, round_up, structures_common::tcbVTable,
+    bit, constants::seL4_PageBits, round_down, round_up, structures_common::{tcbVTable, tcbBuffer},
 };
 use spin::{Lazy, Mutex};
 
@@ -293,4 +293,36 @@ pub fn set_vm_root(tcb: &TCBInner) {
         },
         _ => panic!("set_vm_root: thread_root_cap is not a PageTableCap"),
     }
+}
+
+pub fn lookup_ipc_buffer(is_receiver: bool, tcb: &TCBInner) -> Paddr {
+    let buffer_vptr = tcb.tcb_ipc_buffer;
+    let buffer_cap = tcb.tcb_cte_slot(tcbBuffer).cap;
+
+    match buffer_cap.get_info() {
+        CapInfo::FrameCap { pptr, is_device, .. } => {
+            assert!(!is_device);
+            Paddr(pptr.0 + (buffer_vptr.0 & mask!(seL4_PageBits)))
+        }
+        _ => panic!("lookup_ipc_buffer: not a FrameCap")
+    }
+
+    // if (unlikely(cap_get_capType(bufferCap) != cap_frame_cap)) {
+    //     return NULL;
+    // }
+    // if (unlikely(cap_frame_cap_get_capFIsDevice(bufferCap))) {
+    //     return NULL;
+    // }
+
+    // vm_rights = cap_frame_cap_get_capFVMRights(bufferCap);
+    // if (likely(vm_rights == VMReadWrite ||
+    //            (!isReceiver && vm_rights == VMReadOnly))) {
+    //     word_t basePtr, pageBits;
+
+    //     basePtr = cap_frame_cap_get_capFBasePtr(bufferCap);
+    //     pageBits = pageBitsForSize(cap_frame_cap_get_capFSize(bufferCap));
+    //     return (word_t *)(basePtr + (w_bufferPtr & MASK(pageBits)));
+    // } else {
+    //     return NULL;
+    // }
 }

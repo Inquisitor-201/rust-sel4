@@ -21,7 +21,7 @@ use crate::{
     kernel::{bootinfo::debug_print_bi_info, thread::TCB},
     machine::{clear_memory, registerset::Rv64Reg, Paddr, Pregion, Vaddr, Vregion},
     max_free_index,
-    object::cnode::cte_insert,
+    object::cnode::{cte_insert, derive_cap},
     println,
 };
 
@@ -505,6 +505,8 @@ impl RootServer {
         tcb_inner.init_context();
 
         // todo: derive ipc buffer cap
+        let dc_cap = derive_cap(ipcbuf_cap);
+
         cte_insert(
             root_cnode_cap,
             &root_cnode_cap.cnode_slot_at(seL4_CapInitThreadCNode),
@@ -517,11 +519,17 @@ impl RootServer {
             CapSlot::slot_ref(self.tcb, tcbVTable),
         );
 
+        cte_insert(
+            dc_cap,
+            &root_cnode_cap.cnode_slot_at(seL4_CapInitThreadIPCBuffer),
+            CapSlot::slot_ref(self.tcb, tcbBuffer),
+        );
         // todo: cte insert ipc_buf cap
         // todo: set tcbIPCBuffer, tcbMCP, tcbDomain
         tcb_inner.registers[Rv64Reg::a0 as usize] = bi_frame_vptr.0;
         tcb_inner.registers[Rv64Reg::NextIP as usize] = ui_v_entry.0;
         tcb_inner.tcb_priority = seL4_MaxPrio;
+        tcb_inner.tcb_ipc_buffer = ipcbuf_vptr;
         tcb_inner.set_thread_state(ThreadState_Running);
         // todo: set Cur_domain
 

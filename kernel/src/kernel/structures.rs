@@ -16,6 +16,7 @@ pub enum CapInfo {
     FrameCap {
         vptr: Vaddr,
         pptr: Paddr,
+        is_device: bool,
     },
     UntypedCap {
         pptr: Paddr,
@@ -61,6 +62,7 @@ impl Capability {
             CAP_FRAME_CAP => CapInfo::FrameCap {
                 vptr: Vaddr(self.words[0].get_bits(0..39)),
                 pptr: Paddr(self.words[1].get_bits(9..48)),
+                is_device: self.words[0].get_bit(54),
             },
             CAP_UNTYPED_CAP => CapInfo::UntypedCap {
                 pptr: Paddr(self.words[0].get_bits(0..39)),
@@ -116,7 +118,7 @@ impl Capability {
         }
     }
 
-    pub fn cnode_slot_at(&self, index: usize) -> &mut CapSlot {
+    pub fn cnode_slot_at(&self, index: usize) -> &'static mut CapSlot {
         match self.get_info() {
             CapInfo::CnodeCap { ptr } => CapSlot::slot_ref(ptr, index),
             _ => {
@@ -297,9 +299,4 @@ impl CapSlot {
         self.mdb_node.set_mdb_revocable(true);
         self.mdb_node.set_mdb_first_badged(true);
     }
-}
-
-#[repr(C)]
-pub struct CNode {
-    pub slots: [CapSlot; 1 << CONFIG_ROOT_CNODE_SIZE_BITS],
 }
