@@ -1,7 +1,7 @@
 use sel4_common::{
     invocation::{LABEL_CNODE_COPY, LABEL_NO_ERROR},
     shared_types::MessageInfo,
-    syscall_ids::seL4_SysDebugPutChar,
+    syscall_ids::seL4_SysDebugPutChar, structures_common::CapRights,
 };
 
 use crate::syscalls::{call_with_mrs, sys_send_recv};
@@ -34,26 +34,26 @@ pub fn sel4_cnode_copy(
     src_root: usize,
     src_index: usize,
     src_depth: usize,
-    rights: usize,
+    rights: CapRights,
 ) -> usize {
     // 	seL4_Error result;
     let tag = MessageInfo::new(LABEL_CNODE_COPY, 0, 1, 5);
 
-    // 	/* Setup input capabilities. */
+    /* Setup input capabilities. */
     sel4_setcap(0, src_root);
 
-    // 	/* Marshal and initialise parameters. */
+    /* Marshal and initialise parameters. */
     let mut mr0 = dest_index;
     let mut mr1 = dest_depth & 0xff;
     let mut mr2 = src_index;
     let mut mr3 = src_depth & 0xff;
-    sel4_setmr(4, rights);
+    sel4_setmr(4, rights.bits());
 
-    // 	/* Perform the call, passing in-register arguments directly. */
+    /* Perform the call, passing in-register arguments directly. */
     let output_tag = call_with_mrs(_service, tag, &mut mr0, &mut mr1, &mut mr2, &mut mr3);
     let result = output_tag.label();
 
-    // 	/* Unmarshal registers into IPC buffer on error. */
+    /* Unmarshal registers into IPC buffer on error. */
     if result != LABEL_NO_ERROR {
         panic!("sel4_cnode_copy: error");
     }

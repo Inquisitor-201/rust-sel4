@@ -195,7 +195,7 @@ fn map_it_pt_cap(vspace_cap: Capability, pt_cap: Capability) {
 #[link_section = ".boot.text"]
 fn map_it_frame_cap(vspace_cap: Capability, frame_cap: Capability) {
     let (pt_vptr, pt_pptr) = match frame_cap.get_info() {
-        CapInfo::FrameCap { vptr, pptr } => (vptr, pptr),
+        CapInfo::FrameCap { vptr, pptr, .. } => (vptr, pptr),
         _ => panic!("invalid pt_cap"),
     };
 

@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 // capability types
 pub const CAP_NULL_CAP: usize = 0;
 pub const CAP_FRAME_CAP: usize = 1;
@@ -38,4 +40,12 @@ pub const tcbReply: usize = 2; /* Reply cap slot */
 pub const tcbCaller: usize = 3; /* TCB of most recent IPC sender */
 pub const tcbBuffer: usize = 4; /* IPC buffer cap slot */
 
-pub const seL4_AllRights: usize = 0xf;
+bitflags! {
+    pub struct CapRights: usize {
+        const R = 1 << 0;
+        const W = 1 << 1;
+        const GRANT = 1 << 2;
+        const GRANT_REPLY = 1 << 3;
+        const ALL = 0xf;
+    }
+}

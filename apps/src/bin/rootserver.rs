@@ -8,7 +8,7 @@ use apps::{
 use sel4_common::{
     bit,
     constants::seL4_SlotBits,
-    structures_common::{seL4_AllRights, seL4_CapInitThreadCNode, seL4_CapInitThreadTCB},
+    structures_common::{seL4_CapInitThreadCNode, seL4_CapInitThreadTCB, CapRights},
 };
 
 extern crate apps;
@@ -36,7 +36,9 @@ pub fn main() -> i64 {
         seL4_CapInitThreadCNode,
         seL4_CapInitThreadTCB,
         usize::BITS as _,
-        seL4_AllRights,
+        CapRights::ALL,
     );
+    
+    panic!("main exit!");
     error as _
 }

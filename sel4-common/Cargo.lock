@@ -111,6 +111,7 @@ dependencies = [
 name = "sel4-common"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "riscv",
 ]
 
