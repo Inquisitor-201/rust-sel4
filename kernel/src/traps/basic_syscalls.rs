@@ -11,7 +11,7 @@ use crate::{
         cspace::lookup_slot,
         statedata::ksCurThread,
         structures::{CapInfo, CapSlot, Capability},
-        vspace::lookup_ipc_buffer, thread::ThreadState_Restart,
+        vspace::lookup_ipc_buffer, thread::{schedule, activate_thread},
     },
     object::{
         cnode::{cte_insert, derive_cap},
@@ -133,4 +133,6 @@ pub fn handle_basic_syscall(cptr: usize, msg_info: usize, syscall: usize) {
         seL4_SysCall => handle_invocation(cptr, msg_info, syscall, true, true),
         _ => todo!("handle_basic_syscall"),
     }
+    schedule();
+    activate_thread();
 }

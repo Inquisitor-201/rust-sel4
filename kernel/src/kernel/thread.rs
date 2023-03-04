@@ -9,7 +9,7 @@ use crate::{
     machine::{
         registerset::{Rv64Reg, SSTATUS_SPIE},
         Paddr, Vaddr,
-    },
+    }, println,
 };
 
 use super::{
