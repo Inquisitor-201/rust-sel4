@@ -251,7 +251,7 @@ pub fn create_mapped_it_frame_cap(
     let cap = Capability::cap_frame_cap_new(
         asid,                       /* capFMappedASID    */
         pptr.0,                     /* capFBasePtr       */
-        PAGE_SIZE,                  /* capFSize          */
+        0,                  /* capFSize          */
         VmRights::VMReadWrite as _, /* capFVMRights      */
         false,                      /* capFIsDevice      */
         vptr.0,                     /* capFMappedAddress */
