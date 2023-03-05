@@ -11,11 +11,11 @@ use crate::{
         cspace::lookup_slot,
         statedata::ksCurThread,
         structures::{CapInfo, CapSlot, Capability},
-        vspace::lookup_ipc_buffer, thread::{schedule, activate_thread},
+        vspace::lookup_ipc_buffer, thread::{schedule, activate_thread, ThreadState_Restart, ThreadState_Running},
     },
     object::{
         cnode::{cte_insert, derive_cap},
-        tcb::{lookup_extra_caps, CUR_EXTRA_CAPS},
+        tcb::{lookup_extra_caps, CUR_EXTRA_CAPS}, endpoint::reply_from_kernel_susccess_empty,
     },
     println,
     traps::syscalls::{seL4_TruncatedMessage, SyscallError, seL4_InvalidCapability},
@@ -61,8 +61,8 @@ fn decode_cnode_invocation(
         _ => todo!(),
     }
 
-    let cur_thread = ksCurThread.lock();
-    // (*cur_thread).unwrap().set_thread_state(ThreadState_Restart);
+    let cur_thread = ksCurThread.lock().get().unwrap();
+    cur_thread.set_thread_state(ThreadState_Restart);
 
     if is_move {
         todo!("cnode invocation: is move");
@@ -103,7 +103,7 @@ fn handle_invocation(
     is_call: bool,
     is_blocking: bool,
 ) {
-    let cur_thread = ksCurThread.lock().unwrap();
+    let cur_thread = ksCurThread.lock().get().unwrap();
     let lu_ret = lookup_slot(cur_thread, cptr);
     let buffer = unsafe { lookup_ipc_buffer(false, cur_thread).as_mut::<IPCBuffer>() };
     let info = MessageInfo(msg_info);
@@ -125,7 +125,12 @@ fn handle_invocation(
         _ => todo!()
     }
 
-    // todo: reschedule??
+    if cur_thread.tcb_state.ts_type == ThreadState_Restart {
+        if is_call {
+            reply_from_kernel_susccess_empty(cur_thread.pointer());
+        }
+        cur_thread.set_thread_state(ThreadState_Running);
+    }
 }
 
 pub fn handle_basic_syscall(cptr: usize, msg_info: usize, syscall: usize) {

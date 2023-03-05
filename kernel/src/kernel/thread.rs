@@ -1,4 +1,4 @@
-use core::{mem::size_of, ptr};
+use core::{mem::size_of, ptr, ops::Deref};
 
 use sel4_common::{bit, constants::seL4_TCBBits, round_down};
 use spin::{mutex::Mutex, Lazy};
@@ -9,7 +9,8 @@ use crate::{
     machine::{
         registerset::{Rv64Reg, SSTATUS_SPIE},
         Paddr, Vaddr,
-    }, println,
+    },
+    println,
 };
 
 use super::{
@@ -29,7 +30,24 @@ pub const ThreadState_BlockedOnNotification: u8 = 5;
 #[repr(C)]
 #[derive(Debug)]
 pub struct ThreadState {
-    ts_type: u8,
+    pub ts_type: u8,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct ThreadPointer(pub Paddr);
+
+impl ThreadPointer {
+    pub fn is_null(&self) -> bool {
+        self.0.0 == 0
+    }
+    pub fn get(&self) -> Option<&'static mut TCBInner> {
+        if self.is_null() {
+            None
+        } else {
+            Some(unsafe { self.0.as_mut() })
+        }
+    }
 }
 
 #[repr(C)]
@@ -38,7 +56,7 @@ pub struct TCBInner {
     pub registers: [usize; Rv64Reg::n_contextRegisters as _],
     pub tcb_state: ThreadState,
     pub tcb_priority: usize,
-    pub tcb_ipc_buffer: Vaddr
+    pub tcb_ipc_buffer: Vaddr,
 }
 
 impl TCBInner {
@@ -49,7 +67,7 @@ impl TCBInner {
                 ts_type: ThreadState_Inactive,
             },
             tcb_priority: seL4_MinPrio,
-            tcb_ipc_buffer: Vaddr(0)
+            tcb_ipc_buffer: Vaddr(0),
         }
     }
 
@@ -70,11 +88,11 @@ impl TCBInner {
 
     pub fn schedule_tcb(&self) {
         let cur_thread = *(ksCurThread.lock());
-        if cur_thread.is_none() {
+        if cur_thread.is_null() {
             return;
         }
         let action = *(ksSchedulerAction.lock());
-        if self.ptr_eq(cur_thread.unwrap()) && !self.is_runnable() {
+        if self.ptr_eq(cur_thread.get().unwrap()) && !self.is_runnable() {
             if let SchedulerAction::ResumeCurrentThread = action {
                 panic!("reschedule required");
             }
@@ -89,6 +107,10 @@ impl TCBInner {
     pub fn tcb_cte_slot(&self, index: usize) -> &mut CapSlot {
         let ctable = round_down!(self as *const _ as usize, seL4_TCBBits) as *mut CapSlot;
         unsafe { ctable.add(index).as_mut().unwrap() }
+    }
+    
+    pub fn pointer(&self) -> ThreadPointer {
+        ThreadPointer(Paddr(self as *const _ as usize))
     }
 }
 
@@ -127,7 +149,7 @@ pub fn schedule() {
         SchedulerAction::ResumeCurrentThread => {}
         _ => {
             // let was_runnable;
-            let cur_thread = ksCurThread.lock().unwrap();
+            let cur_thread = ksCurThread.lock().get().unwrap();
             let was_runnable = if cur_thread.is_runnable() {
                 todo!("SCHED_ENQUEUE_CURRENT_TCB");
                 true
@@ -137,17 +159,18 @@ pub fn schedule() {
             if let SchedulerAction::ChooseNewThread = action {
                 todo!("scheduleChooseNewThread");
             } else if let SchedulerAction::SwitchToThread(candidate) = action {
-                assert!(candidate.is_runnable());
+                let target = candidate.get().unwrap();
+                assert!(target.is_runnable());
                 /* Avoid checking bitmap when ksCurThread is higher prio, to
                  * match fast path.
                  * Don't look at ksCurThread prio when it's idle, to respect
                  * information flow in non-fastpath cases. */
-                let fastfail = cur_thread.ptr_eq(ksIdleThread.lock().unwrap())
-                    && candidate.tcb_priority < cur_thread.tcb_priority;
+                let fastfail = cur_thread.ptr_eq(ksIdleThread.lock().get().unwrap())
+                    && target.tcb_priority < cur_thread.tcb_priority;
                 if fastfail {
                     todo!("scheduleChooseNewThread");
                 } else {
-                    assert!(!candidate.ptr_eq(cur_thread));
+                    assert!(!target.ptr_eq(cur_thread));
                     switch_to_thread(candidate);
                 }
             } else {
@@ -158,13 +181,13 @@ pub fn schedule() {
     *(ksSchedulerAction.lock()) = SchedulerAction::ResumeCurrentThread;
 }
 
-pub fn switch_to_thread(tcb: &'static TCBInner) {
+pub fn switch_to_thread(tcb: ThreadPointer) {
     set_vm_root(tcb);
-    *(ksCurThread.lock()) = Some(tcb);
+    *(ksCurThread.lock()) = tcb;
 }
 
 pub fn activate_thread() {
-    let cur_thread = ksCurThread.lock().unwrap();
+    let cur_thread = ksCurThread.lock().get().unwrap();
     match cur_thread.tcb_state.ts_type {
         ThreadState_Running => {}
         ThreadState_Restart => todo!("thread restart"),

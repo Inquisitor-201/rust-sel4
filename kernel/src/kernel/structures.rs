@@ -122,6 +122,7 @@ impl Capability {
         match self.get_info() {
             CapInfo::CnodeCap { ptr } => CapSlot::slot_ref(ptr, index),
             _ => {
+                loop {}
                 panic!("Error: Not a cnode cap!");
             }
         }

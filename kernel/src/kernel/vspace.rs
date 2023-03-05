@@ -14,7 +14,7 @@ use spin::{Lazy, Mutex};
 
 use super::{
     structures::{CapInfo, Capability},
-    thread::TCBInner,
+    thread::{TCBInner, ThreadPointer},
 };
 
 pub const ASID_INVALID: usize = 0;
@@ -285,8 +285,8 @@ pub fn write_it_asid_pool(it_ap_cap: Capability, root_pt_cap: Capability) {
     // todo: write it asid pool
 }
 
-pub fn set_vm_root(tcb: &TCBInner) {
-    let thread_root_cap = tcb.tcb_cte_slot(tcbVTable).cap;
+pub fn set_vm_root(tcb: ThreadPointer) {
+    let thread_root_cap = tcb.get().unwrap().tcb_cte_slot(tcbVTable).cap;
     match thread_root_cap.get_info() {
         CapInfo::PageTableCap { pptr, asid, .. } => unsafe {
             pptr.as_ref::<PageTable>().activate(asid)

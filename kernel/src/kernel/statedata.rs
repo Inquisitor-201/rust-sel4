@@ -1,15 +1,16 @@
-use spin::{Lazy, Mutex};
+use spin::Mutex;
 
-use super::thread::TCBInner;
+use crate::machine::Paddr;
+
+use super::thread::ThreadPointer;
 
 #[derive(Clone, Copy, Debug)]
 pub enum SchedulerAction {
     ResumeCurrentThread,
     ChooseNewThread,
-    SwitchToThread(&'static TCBInner),
+    SwitchToThread(ThreadPointer),
 }
 
-pub static ksSchedulerAction: Lazy<Mutex<SchedulerAction>> =
-    Lazy::new(|| Mutex::new(SchedulerAction::ResumeCurrentThread));
-pub static ksCurThread: Lazy<Mutex<Option<&'static TCBInner>>> = Lazy::new(|| Mutex::new(None));
-pub static ksIdleThread: Lazy<Mutex<Option<&'static TCBInner>>> = Lazy::new(|| Mutex::new(None));
+pub static ksSchedulerAction: Mutex<SchedulerAction> = Mutex::new(SchedulerAction::ResumeCurrentThread);
+pub static ksCurThread: Mutex<ThreadPointer> = Mutex::new(ThreadPointer(Paddr(0)));
+pub static ksIdleThread: Mutex<ThreadPointer> = Mutex::new(ThreadPointer(Paddr(0)));

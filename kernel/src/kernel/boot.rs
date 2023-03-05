@@ -18,7 +18,7 @@ use crate::{
     common::*,
     drivers::plic_init_hart,
     get_level_pgbits, get_level_pgsize, is_aligned,
-    kernel::{bootinfo::debug_print_bi_info, thread::TCB},
+    kernel::bootinfo::debug_print_bi_info,
     machine::{clear_memory, registerset::Rv64Reg, Paddr, Pregion, Vaddr, Vregion},
     max_free_index,
     object::cnode::{cte_insert, derive_cap},
@@ -29,7 +29,7 @@ use super::{
     heap::init_heap,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
     structures::{CapSlot, Capability},
-    thread::{activate_thread, schedule, TCBInner, ThreadState_Running, IDLE_THREAD_TCB},
+    thread::{activate_thread, schedule, ThreadPointer, ThreadState_Running, IDLE_THREAD_TCB, TCB},
     vspace::*,
 };
 
@@ -499,8 +499,8 @@ impl RootServer {
         bi_frame_vptr: Vaddr,
         ipcbuf_vptr: Vaddr,
         ipcbuf_cap: Capability,
-    ) -> &'static mut TCBInner {
-        let tcb_inner = unsafe { self.tcb.as_mut::<TCB>().inner_mut() };
+    ) -> ThreadPointer {
+        let tcb_inner = unsafe { self.tcb.as_ref::<TCB>().inner_mut() };
 
         tcb_inner.init_context();
 
@@ -537,7 +537,7 @@ impl RootServer {
         let cap = Capability::cap_thread_cap_new(tcb_inner as *mut _ as _);
         root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadTCB, cap);
 
-        tcb_inner
+        tcb_inner.pointer()
     }
 
     #[link_section = ".boot.text"]
@@ -698,14 +698,14 @@ pub fn create_idle_thread() -> bool {
     let idle = IDLE_THREAD_TCB.lock();
     let pptr = idle.pptr();
     unsafe {
-        *(ksIdleThread.lock()) = Some(pptr.as_ref::<TCB>().inner_mut());
+        *(ksIdleThread.lock()) = ThreadPointer(pptr);
     }
     //         configureIdleThread(NODE_STATE_ON_CORE(ksIdleThread, i));
     true
 }
 
 #[link_section = ".boot.text"]
-pub fn init_core_state(scheduler_action: &'static TCBInner) {
+pub fn init_core_state(scheduler_action: ThreadPointer) {
     *(ksSchedulerAction.lock()) = SchedulerAction::SwitchToThread(scheduler_action);
     *(ksCurThread.lock()) = *(ksIdleThread.lock());
 }

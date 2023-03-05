@@ -23,6 +23,7 @@ pub fn handle_syscall(cptr: usize, msg_info: usize, syscall: usize) -> ! {
 
 pub fn slowpath(cptr: usize, msg_info: usize, syscall: usize) {
     if syscall as isize >= BASIC_SYSCALL_MIN && syscall as isize <= BASIC_SYSCALL_MAX {
+        println!("cptr = {:#x?}", cptr);
         handle_basic_syscall(cptr, msg_info, syscall);
     } else {
         handle_unknown_syscall(cptr, msg_info, syscall);
@@ -52,7 +53,7 @@ impl SyscallError {
 }
 pub fn get_syscall_arg(i: usize, ipc_buffer: &IPCBuffer) -> usize {
     if i < n_msgRegisters {
-        return ksCurThread.lock().unwrap().registers[msg_registers[i] as usize]
+        return ksCurThread.lock().get().unwrap().registers[msg_registers[i] as usize]
     }
     ipc_buffer.msg[i]
 }
