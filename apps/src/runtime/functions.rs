@@ -28,7 +28,7 @@ pub fn sel4_debug_putchar(c: char) {
 }
 
 pub fn sel4_cnode_copy(
-    _service: usize,
+    dest_root: usize,
     dest_index: usize,
     dest_depth: usize,
     src_root: usize,
@@ -50,7 +50,7 @@ pub fn sel4_cnode_copy(
     sel4_setmr(4, rights.bits());
 
     /* Perform the call, passing in-register arguments directly. */
-    let output_tag = call_with_mrs(_service, tag, &mut mr0, &mut mr1, &mut mr2, &mut mr3);
+    let output_tag = call_with_mrs(dest_root, tag, &mut mr0, &mut mr1, &mut mr2, &mut mr3);
     let result = output_tag.label();
 
     /* Unmarshal registers into IPC buffer on error. */
