@@ -1,5 +1,6 @@
-use core::{mem::size_of, ptr, ops::Deref};
+use core::{mem::size_of, ptr};
 
+use alloc::{vec::Vec, string::{String, ToString}};
 use sel4_common::{bit, constants::seL4_TCBBits, round_down};
 use spin::{mutex::Mutex, Lazy};
 
@@ -9,8 +10,7 @@ use crate::{
     machine::{
         registerset::{Rv64Reg, SSTATUS_SPIE},
         Paddr, Vaddr,
-    },
-    println,
+    }, println,
 };
 
 use super::{
@@ -26,6 +26,8 @@ pub const ThreadState_BlockedOnReceive: u8 = 3;
 pub const ThreadState_BlockedOnSend: u8 = 3;
 pub const ThreadState_BlockedOnReply: u8 = 4;
 pub const ThreadState_BlockedOnNotification: u8 = 5;
+pub const ThreadState_RunningVM: u8 = 6;
+pub const ThreadState_IdleThreadState: u8 = 7;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -53,6 +55,7 @@ impl ThreadPointer {
 #[repr(C)]
 #[derive(Debug)]
 pub struct TCBInner {
+    pub name: String,
     pub registers: [usize; Rv64Reg::n_contextRegisters as _],
     pub tcb_state: ThreadState,
     pub tcb_priority: usize,
@@ -62,6 +65,7 @@ pub struct TCBInner {
 impl TCBInner {
     pub fn new_empty() -> Self {
         Self {
+            name: String::new(),
             registers: [0; Rv64Reg::n_contextRegisters as _],
             tcb_state: ThreadState {
                 ts_type: ThreadState_Inactive,
@@ -111,6 +115,30 @@ impl TCBInner {
     
     pub fn pointer(&self) -> ThreadPointer {
         ThreadPointer(Paddr(self as *const _ as usize))
+    }
+
+    pub fn set_thread_name(&mut self, name: &str) {
+        let truncated_name = name.chars().take(40).collect::<String>();
+        self.name = truncated_name;
+    }
+
+    pub fn debug_print(&self) {
+        let tcb_name = self.name.as_str();
+        let state = match self.tcb_state.ts_type {
+            ThreadState_Inactive => "inactive",
+            ThreadState_Running => "running",
+            ThreadState_Restart => "restart",
+            ThreadState_BlockedOnReceive => "blocked on recv",
+            ThreadState_BlockedOnSend => "blocked on send",
+            ThreadState_BlockedOnReply => "blocked on reply",
+            ThreadState_BlockedOnNotification => "blocked on ntfn",
+            ThreadState_RunningVM => "running VM",
+            ThreadState_IdleThreadState => "idle",
+            _ => panic!("Unknown thread state"),
+        };
+    
+        let core = 0;
+        println!("{:40}\t{:15}\t{:#x?}\t{:20}\t{}\n", tcb_name, state, self.registers[Rv64Reg::FaultIP as usize], self.tcb_priority, core);
     }
 }
 
@@ -194,3 +222,5 @@ pub fn activate_thread() {
         _ => todo!("activate_thread, type = {}", cur_thread.tcb_state.ts_type),
     }
 }
+
+pub static THREAD_LIST: Lazy<Mutex<Vec<ThreadPointer>>> = Lazy::new(|| Mutex::new(Vec::new()));

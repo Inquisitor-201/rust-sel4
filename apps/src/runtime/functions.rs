@@ -1,7 +1,8 @@
 use sel4_common::{
     invocation::{LABEL_CNODE_COPY, LABEL_NO_ERROR},
     shared_types::MessageInfo,
-    syscall_ids::seL4_SysDebugPutChar, structures_common::CapRights,
+    structures_common::CapRights,
+    syscall_ids::{seL4_SysDebugDumpScheduler, seL4_SysDebugPutChar},
 };
 
 use crate::syscalls::{call_with_mrs, sys_send_recv};
@@ -59,6 +60,24 @@ pub fn sel4_cnode_copy(
     }
 
     result
+}
+
+pub fn sel4_debug_dump_scheduler() {
+    let mut unused0: usize = 0;
+    let mut unused1: usize = 0;
+    let mut unused2: usize = 0;
+    let mut unused3: usize = 0;
+    let mut unused_info = MessageInfo(0);
+    sys_send_recv(
+        seL4_SysDebugDumpScheduler,
+        0,
+        0,
+        &mut unused0,
+        &mut unused1,
+        &mut unused2,
+        &mut unused3,
+        &mut unused_info,
+    );
 }
 
 pub fn sel4_setcap(i: usize, cptr: usize) {

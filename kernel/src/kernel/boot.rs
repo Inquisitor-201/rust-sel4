@@ -29,7 +29,7 @@ use super::{
     heap::init_heap,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
     structures::{CapSlot, Capability},
-    thread::{activate_thread, schedule, ThreadPointer, ThreadState_Running, IDLE_THREAD_TCB, TCB},
+    thread::{activate_thread, schedule, ThreadPointer, ThreadState_Running, IDLE_THREAD_TCB, TCB, THREAD_LIST, TCBInner, ThreadState_IdleThreadState},
     vspace::*,
 };
 
@@ -501,6 +501,7 @@ impl RootServer {
         ipcbuf_cap: Capability,
     ) -> ThreadPointer {
         let tcb_inner = unsafe { self.tcb.as_ref::<TCB>().inner_mut() };
+        *tcb_inner = TCBInner::new_empty();
 
         tcb_inner.init_context();
 
@@ -537,6 +538,7 @@ impl RootServer {
         let cap = Capability::cap_thread_cap_new(tcb_inner as *mut _ as _);
         root_cnode_cap.cnode_write_slot_at(seL4_CapInitThreadTCB, cap);
 
+        tcb_inner.set_thread_name("rootserver");
         tcb_inner.pointer()
     }
 
@@ -696,18 +698,22 @@ fn init_irqs(root_cnode_cap: Capability) {
 #[link_section = ".boot.text"]
 pub fn create_idle_thread() -> bool {
     let idle = IDLE_THREAD_TCB.lock();
-    let pptr = idle.pptr();
-    unsafe {
-        *(ksIdleThread.lock()) = ThreadPointer(pptr);
-    }
+    let tcb = ThreadPointer(idle.inner_pptr());
+    *ksIdleThread.lock() = tcb;
+    let t = tcb.get().unwrap();
+    t.set_thread_name("idle_thread");
+    t.set_thread_state(ThreadState_IdleThreadState);
     //         configureIdleThread(NODE_STATE_ON_CORE(ksIdleThread, i));
     true
 }
 
 #[link_section = ".boot.text"]
 pub fn init_core_state(scheduler_action: ThreadPointer) {
-    *(ksSchedulerAction.lock()) = SchedulerAction::SwitchToThread(scheduler_action);
-    *(ksCurThread.lock()) = *(ksIdleThread.lock());
+    *ksSchedulerAction.lock() = SchedulerAction::SwitchToThread(scheduler_action);
+    *ksCurThread.lock() = *ksIdleThread.lock();
+    let mut list = THREAD_LIST.lock();
+    list.push(scheduler_action);
+    list.push(*ksCurThread.lock());
 }
 
 #[link_section = ".boot.text"]
