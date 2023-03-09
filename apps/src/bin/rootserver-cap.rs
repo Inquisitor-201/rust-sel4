@@ -15,6 +15,7 @@ extern crate apps;
 
 #[no_mangle]
 pub fn main() -> i64 {
+    println!("[User] Run user-app...");
     let info = get_bootinfo();
 
     let initial_cnode_object_size = bit!(info.it_cnode_size_bits);

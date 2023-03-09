@@ -8,7 +8,7 @@ fn debug_dump_scheduler() {
     println!("------------------------------------------------------------------------------------------------------");
     let list = THREAD_LIST.lock();
     for tcb in list.iter() {
-        tcb.get().unwrap().debug_print();
+        println!("{}", tcb.get().unwrap());
     }
 }
 

@@ -1,4 +1,4 @@
-use core::{mem::size_of, ptr};
+use core::{mem::size_of, ptr, fmt};
 
 use alloc::{vec::Vec, string::{String, ToString}};
 use sel4_common::{bit, constants::seL4_TCBBits, round_down};
@@ -62,6 +62,26 @@ pub struct TCBInner {
     pub tcb_ipc_buffer: Vaddr,
 }
 
+impl fmt::Display for TCBInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tcb_name = self.name.as_str();
+        let state = match self.tcb_state.ts_type {
+            ThreadState_Inactive => "inactive",
+            ThreadState_Running => "running",
+            ThreadState_Restart => "restart",
+            ThreadState_BlockedOnReceive => "blocked on recv",
+            ThreadState_BlockedOnSend => "blocked on send",
+            ThreadState_BlockedOnReply => "blocked on reply",
+            ThreadState_BlockedOnNotification => "blocked on ntfn",
+            ThreadState_RunningVM => "running VM",
+            ThreadState_IdleThreadState => "idle",
+            _ => panic!("Unknown thread state"),
+        };
+        let core = 0;
+        write!(f, "{:40}\t{:15}\t{:#x?}\t{:20}\t{}\n", tcb_name, state, self.registers[Rv64Reg::FaultIP as usize], self.tcb_priority, core)
+    }
+}
+
 impl TCBInner {
     pub fn new_empty() -> Self {
         Self {
@@ -120,25 +140,6 @@ impl TCBInner {
     pub fn set_thread_name(&mut self, name: &str) {
         let truncated_name = name.chars().take(40).collect::<String>();
         self.name = truncated_name;
-    }
-
-    pub fn debug_print(&self) {
-        let tcb_name = self.name.as_str();
-        let state = match self.tcb_state.ts_type {
-            ThreadState_Inactive => "inactive",
-            ThreadState_Running => "running",
-            ThreadState_Restart => "restart",
-            ThreadState_BlockedOnReceive => "blocked on recv",
-            ThreadState_BlockedOnSend => "blocked on send",
-            ThreadState_BlockedOnReply => "blocked on reply",
-            ThreadState_BlockedOnNotification => "blocked on ntfn",
-            ThreadState_RunningVM => "running VM",
-            ThreadState_IdleThreadState => "idle",
-            _ => panic!("Unknown thread state"),
-        };
-    
-        let core = 0;
-        println!("{:40}\t{:15}\t{:#x?}\t{:20}\t{}\n", tcb_name, state, self.registers[Rv64Reg::FaultIP as usize], self.tcb_priority, core);
     }
 }
 
