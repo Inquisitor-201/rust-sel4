@@ -1,6 +1,6 @@
 use sel4_common::syscall_ids::*;
 
-use crate::{machine::sbi::console_putchar, println, kernel::thread::THREAD_LIST};
+use crate::{kernel::thread::THREAD_LIST, machine::sbi::console_putchar, println};
 
 fn debug_dump_scheduler() {
     println!("Dumping all tcbs!");

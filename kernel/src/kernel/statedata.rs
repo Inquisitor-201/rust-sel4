@@ -11,6 +11,7 @@ pub enum SchedulerAction {
     SwitchToThread(ThreadPointer),
 }
 
-pub static ksSchedulerAction: Mutex<SchedulerAction> = Mutex::new(SchedulerAction::ResumeCurrentThread);
+pub static ksSchedulerAction: Mutex<SchedulerAction> =
+    Mutex::new(SchedulerAction::ResumeCurrentThread);
 pub static ksCurThread: Mutex<ThreadPointer> = Mutex::new(ThreadPointer(Paddr(0)));
 pub static ksIdleThread: Mutex<ThreadPointer> = Mutex::new(ThreadPointer(Paddr(0)));

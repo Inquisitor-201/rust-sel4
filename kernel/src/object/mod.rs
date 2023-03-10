@@ -1,4 +1,4 @@
 pub mod cnode;
-pub mod untyped;
-pub mod tcb;
 pub mod endpoint;
+pub mod tcb;
+pub mod untyped;

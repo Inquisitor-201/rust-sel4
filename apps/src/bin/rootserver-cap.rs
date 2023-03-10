@@ -39,7 +39,7 @@ pub fn main() -> i64 {
         usize::BITS as _,
         CapRights::ALL,
     );
-    
+
     panic!("main exit!");
     error as _
 }

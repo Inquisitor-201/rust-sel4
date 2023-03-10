@@ -29,7 +29,10 @@ use super::{
     heap::init_heap,
     statedata::{ksCurThread, ksIdleThread, ksSchedulerAction, SchedulerAction},
     structures::{CapSlot, Capability},
-    thread::{activate_thread, schedule, ThreadPointer, ThreadState_Running, IDLE_THREAD_TCB, TCB, THREAD_LIST, TCBInner, ThreadState_IdleThreadState},
+    thread::{
+        activate_thread, schedule, TCBInner, ThreadPointer, ThreadState_IdleThreadState,
+        ThreadState_Running, IDLE_THREAD_TCB, TCB, THREAD_LIST,
+    },
     vspace::*,
 };
 

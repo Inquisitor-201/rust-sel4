@@ -1,6 +1,9 @@
-use core::{mem::size_of, ptr, fmt};
+use core::{fmt, mem::size_of, ptr};
 
-use alloc::{vec::Vec, string::{String, ToString}};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use sel4_common::{bit, constants::seL4_TCBBits, round_down};
 use spin::{mutex::Mutex, Lazy};
 
@@ -10,7 +13,8 @@ use crate::{
     machine::{
         registerset::{Rv64Reg, SSTATUS_SPIE},
         Paddr, Vaddr,
-    }, println,
+    },
+    println,
 };
 
 use super::{
@@ -41,7 +45,7 @@ pub struct ThreadPointer(pub Paddr);
 
 impl ThreadPointer {
     pub fn is_null(&self) -> bool {
-        self.0.0 == 0
+        self.0 .0 == 0
     }
     pub fn get(&self) -> Option<&'static mut TCBInner> {
         if self.is_null() {
@@ -78,7 +82,15 @@ impl fmt::Display for TCBInner {
             _ => panic!("Unknown thread state"),
         };
         let core = 0;
-        write!(f, "{:40}\t{:15}\t{:#x?}\t{:20}\t{}\n", tcb_name, state, self.registers[Rv64Reg::FaultIP as usize], self.tcb_priority, core)
+        write!(
+            f,
+            "{:40}\t{:15}\t{:#x?}\t{:20}\t{}\n",
+            tcb_name,
+            state,
+            self.registers[Rv64Reg::FaultIP as usize],
+            self.tcb_priority,
+            core
+        )
     }
 }
 
@@ -132,7 +144,7 @@ impl TCBInner {
         let ctable = round_down!(self as *const _ as usize, seL4_TCBBits) as *mut CapSlot;
         unsafe { ctable.add(index).as_mut().unwrap() }
     }
-    
+
     pub fn pointer(&self) -> ThreadPointer {
         ThreadPointer(Paddr(self as *const _ as usize))
     }

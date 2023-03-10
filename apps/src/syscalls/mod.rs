@@ -1,9 +1,6 @@
 use core::arch::asm;
 
-use sel4_common::{
-    shared_types::MessageInfo,
-    syscall_ids::seL4_SysCall,
-};
+use sel4_common::{shared_types::MessageInfo, syscall_ids::seL4_SysCall};
 
 fn syscall(
     id: usize,

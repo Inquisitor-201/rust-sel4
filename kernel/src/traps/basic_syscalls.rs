@@ -11,14 +11,16 @@ use crate::{
         cspace::lookup_slot,
         statedata::ksCurThread,
         structures::{CapInfo, CapSlot, Capability},
-        vspace::lookup_ipc_buffer, thread::{schedule, activate_thread, ThreadState_Restart, ThreadState_Running},
+        thread::{activate_thread, schedule, ThreadState_Restart, ThreadState_Running},
+        vspace::lookup_ipc_buffer,
     },
     object::{
         cnode::{cte_insert, derive_cap},
-        tcb::{lookup_extra_caps, CUR_EXTRA_CAPS}, endpoint::reply_from_kernel_susccess_empty,
+        endpoint::reply_from_kernel_susccess_empty,
+        tcb::{lookup_extra_caps, CUR_EXTRA_CAPS},
     },
     println,
-    traps::syscalls::{seL4_TruncatedMessage, SyscallError, seL4_InvalidCapability},
+    traps::syscalls::{seL4_InvalidCapability, seL4_TruncatedMessage, SyscallError},
 };
 
 use crate::traps::syscalls::get_syscall_arg;
@@ -119,10 +121,10 @@ fn handle_invocation(
         is_call,
         buffer,
     );
-    
+
     match status.error_type {
-        seL4_NoError => { }
-        _ => todo!()
+        seL4_NoError => {}
+        _ => todo!(),
     }
 
     if cur_thread.tcb_state.ts_type == ThreadState_Restart {

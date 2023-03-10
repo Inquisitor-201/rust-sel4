@@ -1,6 +1,6 @@
 use sel4_common::structures_common::tcbCTable;
 
-use super::{thread::TCBInner, structures::CapSlot};
+use super::{structures::CapSlot, thread::TCBInner};
 
 pub fn lookup_slot(thread: &TCBInner, cptr: usize) -> &'static mut CapSlot {
     // cap_t threadRoot;

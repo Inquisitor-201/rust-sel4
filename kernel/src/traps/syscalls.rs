@@ -4,7 +4,11 @@
 
 use sel4_common::shared_types::IPCBuffer;
 
-use crate::{machine::registerset::{n_msgRegisters, msg_registers}, kernel::statedata::ksCurThread, println};
+use crate::{
+    kernel::statedata::ksCurThread,
+    machine::registerset::{msg_registers, n_msgRegisters},
+    println,
+};
 
 use super::{
     basic_syscalls::handle_basic_syscall, restore_user_context,
@@ -43,17 +47,19 @@ pub const seL4_RevokeFirst: usize = 9;
 pub const seL4_NotEnoughMemory: usize = 10;
 
 pub struct SyscallError {
-    pub error_type: usize
+    pub error_type: usize,
 }
 
 impl SyscallError {
     pub fn new() -> Self {
-        Self { error_type: seL4_NoError }
+        Self {
+            error_type: seL4_NoError,
+        }
     }
 }
 pub fn get_syscall_arg(i: usize, ipc_buffer: &IPCBuffer) -> usize {
     if i < n_msgRegisters {
-        return ksCurThread.lock().get().unwrap().registers[msg_registers[i] as usize]
+        return ksCurThread.lock().get().unwrap().registers[msg_registers[i] as usize];
     }
     ipc_buffer.msg[i]
 }

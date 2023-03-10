@@ -8,7 +8,10 @@ use crate::{
 };
 use riscv::register::satp;
 use sel4_common::{
-    bit, constants::seL4_PageBits, round_down, round_up, structures_common::{tcbVTable, tcbBuffer},
+    bit,
+    constants::seL4_PageBits,
+    round_down, round_up,
+    structures_common::{tcbBuffer, tcbVTable},
 };
 use spin::{Lazy, Mutex};
 
@@ -251,7 +254,7 @@ pub fn create_mapped_it_frame_cap(
     let cap = Capability::cap_frame_cap_new(
         asid,                       /* capFMappedASID    */
         pptr.0,                     /* capFBasePtr       */
-        0,                  /* capFSize          */
+        0,                          /* capFSize          */
         VmRights::VMReadWrite as _, /* capFVMRights      */
         false,                      /* capFIsDevice      */
         vptr.0,                     /* capFMappedAddress */
@@ -300,11 +303,13 @@ pub fn lookup_ipc_buffer(is_receiver: bool, tcb: &TCBInner) -> Paddr {
     let buffer_cap = tcb.tcb_cte_slot(tcbBuffer).cap;
 
     match buffer_cap.get_info() {
-        CapInfo::FrameCap { pptr, is_device, .. } => {
+        CapInfo::FrameCap {
+            pptr, is_device, ..
+        } => {
             assert!(!is_device);
             Paddr(pptr.0 + (buffer_vptr.0 & mask!(seL4_PageBits)))
         }
-        _ => panic!("lookup_ipc_buffer: not a FrameCap")
+        _ => panic!("lookup_ipc_buffer: not a FrameCap"),
     }
 
     // if (unlikely(cap_get_capType(bufferCap) != cap_frame_cap)) {
